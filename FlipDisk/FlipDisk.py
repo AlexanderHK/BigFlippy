@@ -18,7 +18,8 @@ img=FDProcessing.SimpleBW(img, boardSize)
 
 # Display the board
 board.loadImage(img)
-board.PlotLocal()
+#board.PlotLocal()
 board.publishImage()
 board.refreshDisplay()
+board.Shutdown()
 

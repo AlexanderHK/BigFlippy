@@ -64,6 +64,8 @@ class PixelBoard:
         serialMessage = self.rs485.getSerial(self,1)
         print(serialMessage)
         #self.rs485.sendMessage(serialMessage)
+    def Shutdown(self):
+        self.rs485.Close()
 
                 
             

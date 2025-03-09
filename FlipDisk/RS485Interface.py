@@ -6,7 +6,8 @@ Created on Sun Nov 24 17:18:35 2024
 """
 import numpy as np
 import serial
-import RPi.GPIO as GPIO
+import gpiod
+from gpiod.line import Direction, Value
 import PixelBoard as PB
 
 
@@ -19,12 +20,18 @@ import PixelBoard as PB
 class RS485Interface:
 
     def __init__(self):
-
         self.EN_485 =  4
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(self.EN_485,GPIO.OUT)
-        GPIO.output(self.EN_485,GPIO.HIGH)
-        self.t = serial.Serial("/dev/ttyS0",115200)
+        gpiod.is_gpiochip_device("/dev/gpiochip4")
+        self.request = gpiod.request_lines(
+            "/dev/gpiochip4",
+            consumer="blink-example",
+            config={
+                self.EN_485: gpiod.LineSettings(
+                    direction=Direction.OUTPUT, output_value=Value.ACTIVE
+                )
+            },
+        )   
+        self.t = serial.Serial("/dev/ttyAMA0",115200)
         print (self.t.portstr)
     
     def binary_to_hex_byte(self, binary_str):
@@ -33,7 +40,7 @@ class RS485Interface:
         if len(binary_str) != 8 or not all(bit in '01' for bit in binary_str):
             raise ValueError("Input must be an 8-bit binary string")
         print(bytes([int(binary_str, 2)]))
-        return bytes([int(binary_str, 2)])
+        return bytes([int(binary_str, 2)]) 
 
     def getSerial(self,vBoard, command):
         serialArr=list()
@@ -73,3 +80,5 @@ class RS485Interface:
         for x in range(1, len(byteArr)):
            self.t.write(byteArr[x])
            print(x)
+    def Close(self):
+        self.request.set_value(self.EN_485, Value.INACTIVE)
