@@ -57,12 +57,12 @@ class PixelBoard:
    
     def publishImage(self):
         serialMessage = self.rs485.getSerial(self,2)
-        print(serialMessage)
+        self.rs485.sendMessage(serialMessage)
         #self.rs485.sendMessage(serialMessage)
         
     def refreshDisplay(self):
         serialMessage = self.rs485.getSerial(self,1)
-        print(serialMessage)
+        self.rs485.sendMessage(serialMessage)
         #self.rs485.sendMessage(serialMessage)
     def Shutdown(self):
         self.rs485.Close()

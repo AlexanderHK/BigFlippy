@@ -12,6 +12,7 @@ import PixelBoard as PB
 
 
 
+
   
     
    
@@ -23,14 +24,14 @@ class RS485Interface:
         self.EN_485 =  4
         gpiod.is_gpiochip_device("/dev/gpiochip4")
         self.request = gpiod.request_lines(
-            "/dev/gpiochip4",
-            consumer="blink-example",
-            config={
-                self.EN_485: gpiod.LineSettings(
-                    direction=Direction.OUTPUT, output_value=Value.ACTIVE
-                )
-            },
-        )   
+             "/dev/gpiochip4",
+             consumer="blink-example",
+             config={
+                 self.EN_485: gpiod.LineSettings(
+                     direction=Direction.OUTPUT, output_value=Value.ACTIVE
+                 )
+             },
+        )
         self.t = serial.Serial("/dev/ttyAMA0",115200)
         print (self.t.portstr)
     
@@ -45,13 +46,13 @@ class RS485Interface:
     def getSerial(self,vBoard, command):
         serialArr=list()
         for x in range(0, vBoard.PANEL_NUM):
-            serialArr.append(b'x80') 
+            serialArr.append(b'\x80') 
         match command:
         
             #send update to all panels to refresh
             case 1:
                 for x in range(0, vBoard.PANEL_NUM):
-                    serialArr[x]+=b'\x82\x8F'
+                    serialArr[x]+=b'\x82\xFF\x8F'
                 return serialArr
              
             # update panel values but dont refresh
@@ -81,4 +82,4 @@ class RS485Interface:
            self.t.write(byteArr[x])
            print(x)
     def Close(self):
-        self.request.set_value(self.EN_485, Value.INACTIVE)
+        self.t.close()
