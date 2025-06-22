@@ -21,10 +21,11 @@ class Mode(Enum):
 #Cycle mode Variables
 IMAGE_CYCLE_TIME = 5  # Time in seconds for image cycle mode
 CYCLE_IMAGE_DIRECTORY = "TestImages/"  # Directory where images are stored
+SLEEP_START = "10:00"
 
 #Weather mode Variables
-WEATHER_START_TIME = "08:00"  # Start time for weather mode
-WEATHER_END_TIME = "22:00"  # End time for weather mode
+WEATHER_START_TIME = "06:30"  # Start time for weather mode
+WEATHER_END_TIME = "9:30"  # End time for weather mode
 WEATHER_IMAGE_DIRECTORY = "WeatherImages/"  # Directory where images are stored
 
 def Run():
@@ -35,12 +36,14 @@ def Run():
   boardSize = (28, 28)
   board = PixelBoard.PixelBoard(boardSize[0],boardSize[1])
 
-#load file
   #variables
   last_image= ""
   current_day = datetime.now().strftime("%A")  # Get the current day of the week
   weather = Weather()  # Initialize the weather object
   last_time = time.time()
+  
+  
+  
   # Main loop
   while running:
       current_time = time.time()
@@ -58,14 +61,15 @@ def Run():
           mode = Mode.PONG
       else:
           mode = Mode.IMAGE_CYCLE
+      if IsTimeBetween(SLEEP_START,"23:59") and IsTimeBetween("00:00",WEATHER_START_TIME):
+          mode = Mode.STANDBY
 
-      print(f"Current mode: {mode.name}")
 
       if mode == Mode.IMAGE_CYCLE:
           # Load and display the image
           image_files = [f for f in os.listdir(CYCLE_IMAGE_DIRECTORY) if os.path.isfile(os.path.join(CYCLE_IMAGE_DIRECTORY, f))]
           current_image = os.path.join(CYCLE_IMAGE_DIRECTORY, random.choice(image_files))
-          if current_time - last_time >= IMAGE_CYCLE_TIME or current_image != last_image:
+          if current_time - last_time >= IMAGE_CYCLE_TIME and current_image != last_image:
 
               img = Image.open(current_image)
               img = FDProcessing.SimpleBW(img, boardSize)
@@ -73,7 +77,7 @@ def Run():
               #board.PlotLocal()
               board.publishImage()
               board.refreshDisplay()
-              last_time = IMAGE_CYCLE_TIME
+              last_time = current_time
               last_image = current_image
 
       elif mode == Mode.WEATHER:
@@ -87,15 +91,14 @@ def Run():
           print("Pong mode not implemented yet.")
 
       elif mode == Mode.STANDBY:
-          # Placeholder for standby logic
-          print("Standby mode not implemented yet.")
+          print("Waiting for next mode change")
 
       # Check for user input to change modes or exit
-      user_input = input("Enter 'next' to change mode, 'exit' to quit: ")
-      if user_input.lower() == 'exit':
-          running = False
-      elif user_input.lower() == 'next':
-          mode = Mode((mode.value + 1) % len(Mode))
+      #user_input = input("Enter 'next' to change mode, 'exit' to quit: ")
+      #if user_input.lower() == 'exit':
+      #    running = False
+      #elif user_input.lower() == 'next':
+      #    print("ye")
   #board.Shutdown()
 
 def IsTimeBetween(start_time_str, end_time_str):
