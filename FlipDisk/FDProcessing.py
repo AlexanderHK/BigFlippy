@@ -14,7 +14,7 @@ from ultralytics import YOLO
 
 
 
-def SimpleBW(img,newsize):
+def SimpleBW(img,newsize, invert=False):
     # Crop the center of the image
     width, height = img.size   # Get dimensions
     WH=min(width, height)
@@ -26,7 +26,10 @@ def SimpleBW(img,newsize):
 
     #Convert to black and white
     img=img.convert("1")
-
+    
+    if invert:
+        # Invert the image colors
+        img = Image.eval(img, lambda x: 255 - x)
     #downsample image
     img = img.resize(newsize)
     return img
