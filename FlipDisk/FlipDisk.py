@@ -11,6 +11,9 @@ import random
 from datetime import datetime
 from Weather import Weather  # Assuming Weather.py is in the same directory
 import time
+import queue
+import threading
+import queue
 
 class Mode(Enum):
     IMAGE_CYCLE = 0
@@ -42,7 +45,10 @@ def Run():
   weather = Weather()  # Initialize the weather object
   last_time = time.time()
   
-  
+  input_queue = queue.Queue()
+
+  thread = threading.Thread(target=input_thread, args=(input_queue,), daemon=True)
+  thread.start()
   
   # Main loop
   while running:
@@ -93,13 +99,15 @@ def Run():
       elif mode == Mode.STANDBY:
           print("Waiting for next mode change")
 
-      # Check for user input to change modes or exit
-      #user_input = input("Enter 'next' to change mode, 'exit' to quit: ")
-      #if user_input.lower() == 'exit':
-      #    running = False
-      #elif user_input.lower() == 'next':
-      #    print("ye")
-  #board.Shutdown()
+      try:
+            user_input = input_queue.get_nowait()
+            if user_input.lower() == 'exit':
+                running = False
+            elif user_input.lower() == 'next':
+                print("ye")
+      except queue.Empty:
+            pass
+  board.Shutdown()
 
 def IsTimeBetween(start_time_str, end_time_str):
     """
@@ -113,5 +121,12 @@ def IsTimeBetween(start_time_str, end_time_str):
     else:
         # Over midnight
         return now >= start_time or now <= end_time
+    
+def input_thread(q):
+    while True:
+        user_input = input("Enter 'next' to change mode, 'exit' to quit: ")
+        q.put(user_input)
 
+    thread = threading.Thread(target=input_thread, args=(input_queue,), daemon=True)
+    thread.start()
 Run()
