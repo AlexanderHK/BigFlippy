@@ -30,8 +30,10 @@ class Weather:
             # Fetch the temperature for today.
             self.high = weather.daily_forecasts[0].highest_temperature
             self.low = weather.daily_forecasts[0].lowest_temperature
+            print(weather.kind.name)
             self.status = weather.kind
             print(f"High: {self.high}°F, Low: {self.low}°F, Status: {self.status}")
-    
-          
+
+
+
 

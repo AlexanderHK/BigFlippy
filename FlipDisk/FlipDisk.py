@@ -21,10 +21,15 @@ class Mode(Enum):
     PONG = 2
     STANDBY = 3
 
+#run plotted version
+run_in_plot = True
+
 #Cycle mode Variables
 IMAGE_CYCLE_TIME = 5  # Time in seconds for image cycle mode
 CYCLE_IMAGE_DIRECTORY = "TestImages/"  # Directory where images are stored
 SLEEP_START = "10:00"
+
+
 
 #Weather mode Variables
 WEATHER_START_TIME = "06:30"  # Start time for weather mode
@@ -42,6 +47,7 @@ def Run():
   #variables
   last_image= ""
   current_day = datetime.now().strftime("%A")  # Get the current day of the week
+  print("day: ", datetime.now().strftime("%A"))
   weather = Weather()  # Initialize the weather object
   last_time = time.time()
   
@@ -56,6 +62,7 @@ def Run():
       
       if current_day != datetime.now().strftime("%A"):
           # If the day has changed, update the current weather 
+          print("day: ", datetime.now().strftime("%A"))
           current_day = datetime.now().strftime("%A")
           current_image_name = f"{current_day}.png"
           weather.getWeather()  # Fetch the latest weather data
@@ -76,21 +83,27 @@ def Run():
           image_files = [f for f in os.listdir(CYCLE_IMAGE_DIRECTORY) if os.path.isfile(os.path.join(CYCLE_IMAGE_DIRECTORY, f))]
           current_image = os.path.join(CYCLE_IMAGE_DIRECTORY, random.choice(image_files))
           if current_time - last_time >= IMAGE_CYCLE_TIME and current_image != last_image:
-
+              print(f"Loading image: {current_image}")
               img = Image.open(current_image)
               img = FDProcessing.SimpleBW(img, boardSize)
               board.loadImage(img)
-              #board.PlotLocal()
-              board.publishImage()
-              board.refreshDisplay()
+
+              if not run_in_plot:
+                board.publishImage()
+                board.refreshDisplay()
+              else:
+                board.PlotLocal()
+
               last_time = current_time
               last_image = current_image
 
       elif mode == Mode.WEATHER:
           board.LoadWeather(weather)
-          #board.PlotLocal()
-          board.publishImage() 
-          board.refreshDisplay()
+          if not run_in_plot:
+           board.publishImage()
+           board.refreshDisplay()
+          else:
+           board.PlotLocal()
 
       elif mode == Mode.PONG:
           # Placeholder for pong game logic
@@ -126,7 +139,7 @@ def input_thread(q):
     while True:
         user_input = input("Enter 'next' to change mode, 'exit' to quit: ")
         q.put(user_input)
-
+    
     thread = threading.Thread(target=input_thread, args=(input_queue,), daemon=True)
     thread.start()
 Run()
