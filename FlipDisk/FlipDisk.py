@@ -4,6 +4,7 @@ import cv2
 from PIL import Image, ImageEnhance
 import FDProcessing
 import PixelBoard
+import CycleMode
 import sys
 from enum import Enum
 import os 
@@ -14,6 +15,7 @@ import time
 import queue
 import threading
 import queue
+from global_state import boardSize, board
 
 class Mode(Enum):
     IMAGE_CYCLE = 0
@@ -23,15 +25,9 @@ class Mode(Enum):
 
 #run plotted version
 run_in_plot = True
-
-#Cycle mode Variables
-IMAGE_CYCLE_TIME = 5  # Time in seconds for image cycle mode
-CYCLE_IMAGE_DIRECTORY = "TestImages/"  # Directory where images are stored
-SLEEP_START = "10:00"
-
-
-
-#Weather mode Variables
+#==================================================================
+#                   Weather mode Variables
+#==================================================================
 WEATHER_START_TIME = "06:30"  # Start time for weather mode
 WEATHER_END_TIME = "9:30"  # End time for weather mode
 WEATHER_IMAGE_DIRECTORY = "WeatherImages/"  # Directory where images are stored
@@ -41,8 +37,7 @@ def Run():
   mode = Mode.IMAGE_CYCLE
   running = True
   # Create a 10x10 pixel board
-  boardSize = (28, 28)
-  board = PixelBoard.PixelBoard(boardSize[0],boardSize[1])
+
 
   #variables
   last_image= ""
@@ -52,6 +47,8 @@ def Run():
   last_time = time.time()
   
   input_queue = queue.Queue()
+
+  CycleMode.loadContentObjects(boardSize)
 
   thread = threading.Thread(target=input_thread, args=(input_queue,), daemon=True)
   thread.start()
@@ -74,28 +71,13 @@ def Run():
           mode = Mode.PONG
       else:
           mode = Mode.IMAGE_CYCLE
-      if IsTimeBetween(SLEEP_START,"23:59") and IsTimeBetween("00:00",WEATHER_START_TIME):
-          mode = Mode.STANDBY
 
+      if IsTimeBetween(CycleMode.SLEEP_START,"23:59") and IsTimeBetween("00:00",WEATHER_START_TIME):
+          mode = Mode.STANDBY
 
       if mode == Mode.IMAGE_CYCLE:
           # Load and display the image
-          image_files = [f for f in os.listdir(CYCLE_IMAGE_DIRECTORY) if os.path.isfile(os.path.join(CYCLE_IMAGE_DIRECTORY, f))]
-          current_image = os.path.join(CYCLE_IMAGE_DIRECTORY, random.choice(image_files))
-          if current_time - last_time >= IMAGE_CYCLE_TIME and current_image != last_image:
-              print(f"Loading image: {current_image}")
-              img = Image.open(current_image)
-              img = FDProcessing.SimpleBW(img, boardSize)
-              board.loadImage(img)
-
-              if not run_in_plot:
-                board.publishImage()
-                board.refreshDisplay()
-              else:
-                board.PlotLocal()
-
-              last_time = current_time
-              last_image = current_image
+            CycleMode.cycle(current_time, run_in_plot)
 
       elif mode == Mode.WEATHER:
           board.LoadWeather(weather)
@@ -122,6 +104,9 @@ def Run():
             pass
   board.Shutdown()
 
+#==================================================================
+#                   Helper functions
+#==================================================================
 def IsTimeBetween(start_time_str, end_time_str):
     """
     Returns True if the current time is between start_time and end_time (24-hour format 'HH:MM').
@@ -142,4 +127,5 @@ def input_thread(q):
     
     thread = threading.Thread(target=input_thread, args=(input_queue,), daemon=True)
     thread.start()
+
 Run()
