@@ -24,7 +24,7 @@ class Mode(Enum):
     STANDBY = 3
 
 #run plotted version
-run_in_plot = True
+run_in_plot = False
 #==================================================================
 #                   Weather mode Variables
 #==================================================================
