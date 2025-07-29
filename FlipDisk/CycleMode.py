@@ -1,4 +1,4 @@
-from PIL import Image
+from PIL import Image, ImageSequence
 import os
 import random
 from datetime import datetime
@@ -157,16 +157,15 @@ def parse_gif(filepath):
     # Create the output folder if it doesn't exist
     os.makedirs(output_folder, exist_ok=True)
 
-    # Open the GIF
-    with Image.open(filepath) as img:
-        frame = 0
-        try:
-            while True:
-                img.seek(frame)
-                frames.append(img)
-                frame += 1
-        except EOFError:
-            pass
+    frames = []
+    try:
+        img = Image.open(filepath)
+        for frame in ImageSequence.Iterator(img):
+            frames.append(frame.copy())  # Append a copy to avoid issues with subsequent seeks
+    except FileNotFoundError:
+        print(f"Error: GIF file not found at {gif_file_path}")
+    except Exception as e:
+        print(f"An error occurred while loading GIF frames: {e}")
     return frames
 #=================================================================
 #                   Main function

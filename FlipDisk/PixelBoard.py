@@ -11,7 +11,7 @@ from PIL import Image, ImageEnhance
 from Weather import Weather  # Assuming Weather.py is in the same directory
 from BoardFont import BoardFont  # Assuming BoardFont.py is in the same directory
 from FDProcessing import SimpleBW, EdgeDetection
-#import RS485Interface as ser
+import RS485Interface as ser
 
 #virtual pixelboard
 class PixelBoard:
@@ -26,7 +26,7 @@ class PixelBoard:
         self.CMD_SEND_NO_REFRESH = 0x84       # Write buffer to a panel, but don't commit until we send the refresh command (useful for painting all displays at the same time)
         self.FRAME_END = 0x8F
         self.PANEL_NUM = 4
-        #self.rs485 = ser.RS485Interface()
+        self.rs485 = ser.RS485Interface()
         
         # Max number of data bytes to be sent for 28x7 controller
         DATA_BYTES = 28
