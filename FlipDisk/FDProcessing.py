@@ -48,8 +48,13 @@ def EdgeDetection(img,newsize):
     cvImg=np.array(img)
     #Edge detection 
     # Convert the image to grayscale
-    gray = cv2.cvtColor(cvImg, cv2.COLOR_BGR2GRAY)
-    
+    # Error checking: if already grayscale, skip color conversion
+    if len(cvImg.shape) == 2 or (len(cvImg.shape) == 3 and cvImg.shape[2] == 1):
+        gray = cvImg
+    else:
+        # Convert the image to grayscale
+        gray = cv2.cvtColor(cvImg, cv2.COLOR_RGB2GRAY)
+
     # Apply Gaussian blur to reduce noise
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
     
