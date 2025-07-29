@@ -15,6 +15,7 @@ IMAGE_CYCLE_TIME = 5  # Time in seconds for image cycle mode
 ANIMATION_FRAME_RATE = 0.1  # Time in seconds for each frame in animation
 CYCLE_IMAGE_DIRECTORY = "TestImages"  # Directory where images are stored
 SLEEP_START = "10:00"
+GIF_LOOPS = 3
 
 #Instance variables
 LOADED_FILES = []
@@ -153,9 +154,8 @@ def parse_gif(filepath):
     base_dir = os.path.dirname(filepath)
     gif_name = os.path.splitext(os.path.basename(filepath))[0]
     output_folder = os.path.join(base_dir, f"{gif_name}_frames")
-
-    # Create the output folder if it doesn't exist
-    os.makedirs(output_folder, exist_ok=True)
+    
+    
 
     frames = []
     try:
@@ -166,6 +166,10 @@ def parse_gif(filepath):
         print(f"Error: GIF file not found at {gif_file_path}")
     except Exception as e:
         print(f"An error occurred while loading GIF frames: {e}")
+    
+    og_frames = frames.copy()
+    for _ in range(GIF_LOOPS):
+            frames.extend(og_frames)
     return frames
 #=================================================================
 #                   Main function
