@@ -185,6 +185,10 @@ def cycle(current_time, run_in_plot=False):
     """
     global last_cycle_name, last_time, LOADED_FILES
     #chooses a random object from the loaded files
+    
+    #have to do some error checking here for some reason
+    if len(LOADED_FILES)==0:
+        return
     current_image_obj = random.choice(LOADED_FILES)
     current_image = current_image_obj.name
 
@@ -208,7 +212,7 @@ def cycle(current_time, run_in_plot=False):
 
         last_time = current_time
         last_cycle_name = current_image
-
+    return
 import threading
 
 class CycleMode(ModeBase):
@@ -222,8 +226,10 @@ class CycleMode(ModeBase):
         self.lock = threading.Lock()
 
     def run(self, run_in_plot=False):
+        
         while self.state == "RUNNING":
             current_time = time.time()
+            
             # If input_event is set and input_data is 'next', cycle immediately
             if self.input_event.is_set():
                 with self.lock:
@@ -232,6 +238,7 @@ class CycleMode(ModeBase):
                         self.input_event.clear()
                         self.input_data = None
                         continue
+                        
             # Otherwise, cycle normally
             cycle(current_time, run_in_plot)
             if not run_in_plot:
