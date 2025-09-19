@@ -8,7 +8,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 from PIL import Image, ImageEnhance
-from Weather import Weather  # Assuming Weather.py is in the same directory
 from BoardFont import BoardFont  # Assuming BoardFont.py is in the same directory
 from FDProcessing import SimpleBW, EdgeDetection
 import RS485Interface as ser
@@ -47,17 +46,6 @@ class PixelBoard:
     def set_pixel(self, x, y, color):
         if 0 <= x < self.width and 0 <= y < self.height:
             self.board[y, x] = color
-    def LoadWeather(self, weather):
-        """
-        Loads weather data onto the board.
-        :param weather: Weather object containing high, low, and status attributes.
-        """
-        self.clear()
-        img = Image.open(f"WeatherImages/{weather.status}.png")  # Load the weather image
-        img = SimpleBW(img, self.getSize(), invert=True)  # Convert to black and white
-        self.loadImage(img)
-        self.WriteOnTop(f"LO   HI", y_offset=0,font=BoardFont(), x_offset=0, spacing=1)
-        self.WriteOnTop(f"{weather.low}   {weather.high}", y_offset=6,font=BoardFont(), x_offset=0, spacing=1)
     def clear(self):
         self.board.fill(0)
 
@@ -71,14 +59,12 @@ class PixelBoard:
    
     def publishImage(self):
         serialMessage = self.rs485.getSerial(self,2)
-        print(serialMessage)
         self.rs485.sendMessage(serialMessage)
         self.rs485.sendMessage(serialMessage)
         
     def refreshDisplay(self):
         serialMessage = self.rs485.getSerial(self,1)
         self.rs485.sendMessage(serialMessage)
-        print(serialMessage)
         self.rs485.sendMessage(serialMessage)
     def Shutdown(self):
         self.rs485.Close()
