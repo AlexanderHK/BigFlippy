@@ -6,7 +6,10 @@ import time
 import FDProcessing
 import PixelBoard
 from global_state import boardSize, board
+from .ModeBase import ModeBase
+
 #global variables
+STATE = "RUNNING"
 
 #Cycle mode Variables
 ACCEPTABLE_EXTENSIONS = ['jpg', 'jpeg', 'png']
@@ -14,7 +17,7 @@ ACCEPTABLE_PROCESSING_MODES = ['EdgeDetection', 'SimpleBW', 'Yolo']
 IMAGE_CYCLE_TIME = 5  # Time in seconds for image cycle mode
 ANIMATION_FRAME_RATE = 0.1  # Time in seconds for each frame in animation
 CYCLE_IMAGE_DIRECTORY = "TestImages"  # Directory where images are stored
-SLEEP_START = "10:00"
+SLEEP_START = "23:00"
 GIF_LOOPS = 3
 
 #Instance variables
@@ -29,6 +32,8 @@ last_time = time.time()
 class ContentObject:
     '''Class representing a FlipDisk object, which can be a photo or an animation.'''
     def __init__(self, filepath, mode):
+            
+
         self.filepath = filepath
 
         if filepath.endswith(".gif"):
@@ -163,7 +168,7 @@ def parse_gif(filepath):
         for frame in ImageSequence.Iterator(img):
             frames.append(frame.copy())  # Append a copy to avoid issues with subsequent seeks
     except FileNotFoundError:
-        print(f"Error: GIF file not found at {gif_file_path}")
+        print(f"Error: GIF file not found at {filepath}")
     except Exception as e:
         print(f"An error occurred while loading GIF frames: {e}")
     
@@ -203,3 +208,41 @@ def cycle(current_time, run_in_plot=False):
 
         last_time = current_time
         last_cycle_name = current_image
+
+import threading
+
+class CycleMode(ModeBase):
+    def __init__(self):
+        self.last_cycle_name = ""
+        self.last_time = time.time()
+        loadContentObjects(boardSize)
+        self.state = "RUNNING"
+        self.input_event = threading.Event()
+        self.input_data = None
+        self.lock = threading.Lock()
+
+    def run(self, run_in_plot=False):
+        while self.state == "RUNNING":
+            current_time = time.time()
+            # If input_event is set and input_data is 'next', cycle immediately
+            if self.input_event.is_set():
+                with self.lock:
+                    if self.input_data and self.input_data.lower() == 'next':
+                        cycle(current_time, run_in_plot)
+                        self.input_event.clear()
+                        self.input_data = None
+                        continue
+            # Otherwise, cycle normally
+            cycle(current_time, run_in_plot)
+            if not run_in_plot:
+                board.refreshDisplay()
+            else:
+                board.PlotLocal()
+
+    def shutdown(self):
+        self.state = "STOPPED"
+
+    def receive_data(self, data):
+        with self.lock:
+            self.input_data = data
+            self.input_event.set()

@@ -8,10 +8,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 from PIL import Image, ImageEnhance
-from Weather import Weather  # Assuming Weather.py is in the same directory
 from BoardFont import BoardFont  # Assuming BoardFont.py is in the same directory
 from FDProcessing import SimpleBW, EdgeDetection
-import RS485Interface as ser
+#import RS485Interface as ser
 
 #virtual pixelboard
 class PixelBoard:
@@ -26,7 +25,7 @@ class PixelBoard:
         self.CMD_SEND_NO_REFRESH = 0x84       # Write buffer to a panel, but don't commit until we send the refresh command (useful for painting all displays at the same time)
         self.FRAME_END = 0x8F
         self.PANEL_NUM = 4
-        self.rs485 = ser.RS485Interface()
+        #self.rs485 = ser.RS485Interface()
         
         # Max number of data bytes to be sent for 28x7 controller
         DATA_BYTES = 28
@@ -47,17 +46,6 @@ class PixelBoard:
     def set_pixel(self, x, y, color):
         if 0 <= x < self.width and 0 <= y < self.height:
             self.board[y, x] = color
-    def LoadWeather(self, weather):
-        """
-        Loads weather data onto the board.
-        :param weather: Weather object containing high, low, and status attributes.
-        """
-        self.clear()
-        img = Image.open(f"WeatherImages/{weather.status}.png")  # Load the weather image
-        img = SimpleBW(img, self.getSize(), invert=True)  # Convert to black and white
-        self.loadImage(img)
-        self.WriteOnTop(f"LO   HI", y_offset=0,font=BoardFont(), x_offset=0, spacing=1)
-        self.WriteOnTop(f"{weather.low}   {weather.high}", y_offset=6,font=BoardFont(), x_offset=0, spacing=1)
     def clear(self):
         self.board.fill(0)
 
