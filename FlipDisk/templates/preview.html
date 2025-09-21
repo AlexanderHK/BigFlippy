@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Preview Board Image</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: #1a1a1a; 
+            color: #e0e0e0; 
+            margin: 0; 
+        }
+        .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            padding: 2em 1em; 
+        }
+        h2 { 
+            color: #ffffff; 
+            text-align: center; 
+            margin-bottom: 1.5em; 
+        }
+        .button {
+            display: block;
+            width: 100%;
+            padding: 1em;
+            margin: 1em 0;
+            font-size: 1.2em;
+            background: #ffffff;
+            color: #1a1a1a;
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        .button:hover { 
+            background: #f0f0f0;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+            transform: translateY(-2px);
+        }
+        .button.confirm {
+            background: #4caf50;
+            color: white;
+        }
+        .button.confirm:hover {
+            background: #45a049;
+        }
+        .button.back {
+            background: #ff9800;
+            color: white;
+        }
+        .button.back:hover {
+            background: #f57c00;
+        }
+        .preview-container {
+            display: flex;
+            justify-content: center;
+            margin: 2em 0;
+        }
+        .preview-item {
+            text-align: center;
+        }
+        .board-preview-container {
+            display: inline-block;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+        }
+        .board-preview {
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+            width: 400px;
+            height: 400px;
+            display: block;
+        }
+        .preview-label {
+            color: #ffffff;
+            font-weight: bold;
+            margin-bottom: 0.5em;
+        }
+        .board-info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1em;
+            border-radius: 8px;
+            margin: 1em 0;
+            text-align: center;
+        }
+        .flash { 
+            color: #4caf50; 
+            text-align: center; 
+            margin-bottom: 1em; 
+            padding: 0.5em;
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid #4caf50;
+            border-radius: 8px;
+        }
+        @media (max-width: 600px) {
+            .container {
+                max-width: 400px;
+                padding: 1em 0.5em;
+            }
+            .board-preview-container {
+                padding: 15px;
+            }
+            .board-preview {
+                width: 300px;
+                height: 300px;
+            }
+        }
+        @media (max-width: 400px) {
+            .board-preview-container {
+                padding: 10px;
+            }
+            .board-preview {
+                width: 250px;
+                height: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Preview Board Image</h2>
+        
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <div class="flash">{{ messages[0] }}</div>
+          {% endif %}
+        {% endwith %}
+        
+        <div class="board-info">
+            <strong>Processing Type:</strong> {{ target_folder }}<br>
+            <strong>Board Size:</strong> {{ board_size[0] }} × {{ board_size[1] }} pixels
+        </div>
+        
+        <div class="preview-container">
+            <div class="preview-item">
+                <div class="preview-label">Board Preview</div>
+                <div class="board-preview-container">
+                    <img src="{{ url_for('uploaded_file', filename='preview/' + processed_filename) }}" 
+                         class="board-preview" alt="Board preview">
+                </div>
+                <div style="margin-top: 1em; font-size: 1em; color: #ccc;">
+                    This is how it will appear on the {{ board_size[0] }}×{{ board_size[1] }} flip-dot display<br>
+                    <small style="color: #999;">(Upsampled for visibility - actual size is {{ board_size[0] }}×{{ board_size[1] }} pixels)</small>
+                </div>
+            </div>
+        </div>
+        
+        <form action="/confirm_image" method="post">
+            <input type="hidden" name="filename" value="{{ filename }}">
+            <input type="hidden" name="target_folder" value="{{ target_folder }}">
+            <button class="button confirm" type="submit">✓ Confirm & Send to Board</button>
+        </form>
+        
+        <a href="/upload">
+            <button class="button back" type="button">← Back to Upload</button>
+        </a>
+    </div>
+</body>
+</html>

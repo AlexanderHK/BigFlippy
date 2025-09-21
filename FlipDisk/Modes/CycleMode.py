@@ -49,7 +49,6 @@ class ContentObject:
             self.name = filepath.split("\\")[-1]
             self.content_type = "Photo"
             
-        print(self.name, self.content_type)
         #chooses processing mode based on the folder above the file with a lil error handling bb
         self.processing_mode = mode
         if self.processing_mode not in ACCEPTABLE_PROCESSING_MODES:

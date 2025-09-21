@@ -55,6 +55,12 @@ def EdgeDetection(img,newsize):
         # Convert the image to grayscale
         gray = cv2.cvtColor(cvImg, cv2.COLOR_RGB2GRAY)
 
+    # Ensure the image is in the correct range (0-255) for Canny edge detection
+    if gray.max() <= 1.0:
+        gray = (gray * 255).astype(np.uint8)
+    else:
+        gray = gray.astype(np.uint8)
+
     # Apply Gaussian blur to reduce noise
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
     
