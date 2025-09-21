@@ -134,6 +134,8 @@ def Run(run_in_plot=False):
         try:
             command = command_queue.get(timeout=0.1)
             command_lower = command.lower()
+            print(f"Received command: {command_lower}")
+
 
             if command_lower == 'exit':
                 running = False
