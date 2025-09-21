@@ -38,19 +38,19 @@ def index():
 
 @app.route('/standby', methods=['POST'])
 def standby():
-    send_command('standby')
+    send_command('force standby')
     flash('Standby mode forced!')
     return redirect(url_for('index'))
 
 @app.route('/weather', methods=['POST'])
 def weather():
-    send_command('weather')
+    send_command('force weather')
     flash('Weather mode forced!')
     return redirect(url_for('index'))
 
 @app.route('/cycle', methods=['POST'])
 def cycle():
-    send_command('cycle')
+    send_command('force cycle')
     flash('Cycle mode forced!')
     return redirect(url_for('index'))
 
