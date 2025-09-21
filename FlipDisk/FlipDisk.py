@@ -57,16 +57,30 @@ def zmq_subscriber_thread(q, is_running_func):
     socket.setsockopt(zmq.SUBSCRIBE, b"")  # Subscribe to all messages
     
     # Connect to Flask publisher (Flask binds, we connect)
-    try:
-        socket.connect("tcp://localhost:5555")
-        print("ZMQ Subscriber connected to Flask on port 5555", flush=True)
-    except zmq.ZMQError as e:
+    # Add delay to ensure Flask has fully started
+    print("Waiting for Flask to initialize...", flush=True)
+    time.sleep(3)
+    
+    connected = False
+    for attempt in range(5):  # Try for up to 5 attempts
         try:
-            socket.connect("tcp://localhost:5556")
-            print("ZMQ Subscriber connected to Flask on port 5556", flush=True)
-        except zmq.ZMQError as e2:
-            print(f"Failed to connect to Flask: {e2}", flush=True)
-            return
+            socket.connect("tcp://localhost:5555")
+            print("ZMQ Subscriber connected to Flask on port 5555", flush=True)
+            connected = True
+            break
+        except zmq.ZMQError as e:
+            try:
+                socket.connect("tcp://localhost:5556")
+                print("ZMQ Subscriber connected to Flask on port 5556", flush=True)
+                connected = True
+                break
+            except zmq.ZMQError as e2:
+                print(f"Attempt {attempt + 1}: Waiting for Flask ZMQ to be ready...", flush=True)
+                time.sleep(1)
+    
+    if not connected:
+        print("Failed to connect to Flask after multiple attempts", flush=True)
+        return
     
     try:
         while is_running_func():
@@ -76,10 +90,12 @@ def zmq_subscriber_thread(q, is_running_func):
                 print(f"Received ZMQ message: {data}", flush=True)
                 
                 # Put the command into the queue for processing
-                if 'command' in data:
+                if 'force' in data:
                     q.put(f"force {data['command']}")
                 elif 'image_path' in data:
-                    q.put(f"image {data['image_path']}")
+                    q.put(f"next {data['image_path']}")
+                else:
+                    q.put(data['command'])
                     
             except zmq.Again:
                 # No message available
@@ -102,6 +118,31 @@ def get_current_mode():
         return StandbyMode()
     else:
         return CycleMode()
+
+def status_broadcast_thread(status_socket, is_running_func, mode_lock, get_mode_func, get_force_mode_func):
+    """Thread to broadcast status updates to frontend every 3 seconds"""
+    while is_running_func():
+        try:
+            with mode_lock:
+                current_mode = get_mode_func()
+                force_mode = get_force_mode_func()
+                
+            status_data = {
+                'current_mode': type(current_mode).__name__ if current_mode else 'None',
+                'is_forced': force_mode is not None,
+                'forced_mode': type(force_mode).__name__ if force_mode else None,
+                'timestamp': datetime.now().isoformat()
+            }
+            
+            status_socket.send_string(json.dumps(status_data))
+            print(f"Status broadcast: {status_data['current_mode']}, forced: {status_data['is_forced']}", flush=True)
+            
+        except Exception as e:
+            print(f"Status broadcast error: {e}", flush=True)
+            
+        time.sleep(3)  # Broadcast every 3 seconds
+    
+    print("Status broadcast thread terminated", flush=True)
     
 #====================================================================
 #                          Main Run loop
@@ -115,12 +156,34 @@ def Run(run_in_plot=False):
     mode_thread = None
     mode_lock = threading.Lock()  # Thread safety for mode operations
     
+    # Setup ZMQ publisher for status updates to frontend
+    status_context = zmq.Context()
+    status_socket = status_context.socket(zmq.PUB)
+    try:
+        status_socket.bind("tcp://*:5557")
+        print("Backend status publisher bound to tcp://*:5557", flush=True)
+    except zmq.ZMQError as e:
+        print(f"Failed to bind status publisher: {e}", flush=True)
+    
     def is_running():
         return running
+        
+    def get_current_mode_wrapper():
+        return mode
+        
+    def get_force_mode_wrapper():
+        return force_mode
     
     # Start ZMQ subscriber thread as primary control method
     zmq_thread = threading.Thread(target=zmq_subscriber_thread, args=(command_queue, is_running), daemon=True)
     zmq_thread.start()
+    
+    # Start status broadcast thread
+    status_thread = threading.Thread(target=status_broadcast_thread, 
+                                   args=(status_socket, is_running, mode_lock, get_current_mode_wrapper, get_force_mode_wrapper), 
+                                   daemon=True)
+    status_thread.start()
+    
     print("FlipDisk started - Browser control active on tcp://localhost:5555", flush=True)
     print("Waiting for commands from web interface...", flush=True)
 
@@ -133,18 +196,17 @@ def Run(run_in_plot=False):
         # Check for commands from ZMQ (web interface)
         try:
             command = command_queue.get(timeout=0.1)
-            command_lower = command.lower()
-            print(f"Received command: {command_lower}", flush=True)
+            print(f"Received command: {command}", flush=True)
 
 
-            if command_lower == 'exit':
+            if command == 'exit':
                 running = False
                 with mode_lock:
                     if mode:
                         mode.shutdown()
 
-            elif command_lower.startswith('force '):
-                arg = command_lower.split(' ', 1)[1]
+            elif command.startswith('force '):
+                arg = command.split(' ', 1)[1]
                 #======================================
                 #             Define Modes
                 #======================================
@@ -171,19 +233,8 @@ def Run(run_in_plot=False):
                     mode_thread.start()
                     print(f"Forced mode: {type(mode).__name__}", flush=True)
 
-            elif command_lower.startswith('image '):
-                # Handle image processing from web interface
-                image_path = command_lower.split(' ', 1)[1]
-                print(f"Processing image: {image_path}", flush=True)
-                # Send image to current mode for processing
-                with mode_lock:
-                    if mode:
-                        try:
-                            mode.receive_data(f"image {image_path}")
-                        except Exception as e:
-                            print(f"Error processing image command: {e}", flush=True)
 
-            elif command_lower == 'release':
+            elif command == 'release':
                 force_mode = None
                 print("Released forced mode. Returning to automatic mode switching.", flush=True)
             

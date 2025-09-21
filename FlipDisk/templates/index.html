@@ -50,6 +50,37 @@
             border-radius: 8px;
         }
         a { text-decoration: none; }
+        
+        /* Status indicator styles */
+        .status-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            z-index: 1000;
+        }
+        
+        /* Forced mode background */
+        body.forced-mode {
+            background: linear-gradient(135deg, #3a1a1a, #2a0000);
+            transition: background 0.5s ease;
+        }
+        
+        .forced-indicator {
+            text-align: center;
+            color: #ff6b6b;
+            font-weight: bold;
+            margin-bottom: 1em;
+            padding: 0.5em;
+            background: rgba(255, 107, 107, 0.1);
+            border: 1px solid #ff6b6b;
+            border-radius: 8px;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -78,5 +109,51 @@
             <button class="button" type="submit" style="background: #ff4444;">Exit FlipDisk</button>
         </form>
     </div>
+    
+    <!-- Status indicator -->
+    <div class="status-indicator" id="status">
+        Mode: <span id="current-mode">Loading...</span>
+    </div>
+    
+    <!-- Forced mode indicator -->
+    <div class="forced-indicator" id="forced-indicator">
+        🔒 FORCED MODE ACTIVE
+    </div>
+    
+    <script>
+        let lastStatus = null;
+        
+        function updateStatus() {
+            fetch('/status')
+                .then(response => response.json())
+                .then(data => {
+                    // Update status indicator
+                    document.getElementById('current-mode').textContent = data.current_mode || 'Unknown';
+                    
+                    // Handle forced mode styling
+                    const body = document.body;
+                    const forcedIndicator = document.getElementById('forced-indicator');
+                    
+                    if (data.is_forced) {
+                        body.classList.add('forced-mode');
+                        forcedIndicator.style.display = 'block';
+                        forcedIndicator.innerHTML = '🔒 FORCED MODE: ' + (data.forced_mode || data.current_mode);
+                    } else {
+                        body.classList.remove('forced-mode');
+                        forcedIndicator.style.display = 'none';
+                    }
+                    
+                    lastStatus = data;
+                })
+                .catch(error => {
+                    console.error('Status update failed:', error);
+                    document.getElementById('current-mode').textContent = 'Error';
+                });
+        }
+        
+        // Update status every 2 seconds
+        updateStatus(); // Initial load
+        setInterval(updateStatus, 2000);
+    </script>
 </body>
 </html>
