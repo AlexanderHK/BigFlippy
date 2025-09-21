@@ -153,6 +153,7 @@ def Run(run_in_plot=False):
     running = True
     command_queue = queue.Queue()
     force_mode = None
+    mode = None
     mode_thread = None
     mode_lock = threading.Lock()  # Thread safety for mode operations
     
