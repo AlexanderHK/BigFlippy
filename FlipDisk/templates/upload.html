@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Upload Image</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: #1a1a1a; 
+            color: #e0e0e0; 
+            margin: 0; 
+        }
+        .container { 
+            max-width: 400px; 
+            margin: 0 auto; 
+            padding: 2em 1em; 
+        }
+        h2, h3 { 
+            color: #ffffff; 
+            text-align: center; 
+        }
+        .button {
+            display: block;
+            width: 100%;
+            padding: 1em;
+            margin: 1em 0;
+            font-size: 1.2em;
+            background: #ffffff;
+            color: #1a1a1a;
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        .button:hover { 
+            background: #f0f0f0;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+            transform: translateY(-2px);
+        }
+        .flash { 
+            color: #4caf50; 
+            text-align: center; 
+            margin-bottom: 1em; 
+            padding: 0.5em;
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid #4caf50;
+            border-radius: 8px;
+        }
+        input[type="file"] {
+            width: 100%;
+            padding: 0.8em;
+            margin: 1em 0;
+            background: #2d2d2d;
+            border: 2px solid #444;
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 1em;
+        }
+        input[type="file"]:hover {
+            border-color: #4a90e2;
+        }
+        a { 
+            color: #ff4444; 
+            text-decoration: none; 
+            display: block;
+            text-align: center;
+            margin-top: 1em;
+        }
+        a:hover { color: #ff6666; }
+        img {
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Upload Image or GIF</h2>
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <div class="flash">{{ messages[0] }}</div>
+          {% endif %}
+        {% endwith %}
+        <form method="post" enctype="multipart/form-data">
+            <input type="file" name="file" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp" required>
+            <button class="button" type="submit">Upload</button>
+        </form>
+        {% if request.args.get('filename') %}
+            <h3>Preview:</h3>
+            <img src="{{ url_for('uploaded_file', filename=request.args.get('filename')) }}" style="max-width:100%;display:block;margin:1em auto;">
+            <a href="{{ url_for('crop', filename=request.args.get('filename')) }}"><button class="button" type="button">Crop Image</button></a>
+        {% endif %}
+        <a href="/">Back to Home</a>
+    </div>
+</body>
+</html>

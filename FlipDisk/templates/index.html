@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>FlipDisk Control</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: #1a1a1a; 
+            color: #e0e0e0; 
+            margin: 0; 
+        }
+        .container { 
+            max-width: 400px; 
+            margin: 0 auto; 
+            padding: 2em 1em; 
+        }
+        h1, h2 { 
+            color: #ffffff; 
+            text-align: center; 
+            margin-bottom: 1.5em; 
+        }
+        .button {
+            display: block;
+            width: 100%;
+            padding: 1em;
+            margin: 1em 0;
+            font-size: 1.2em;
+            background: #ffffff;
+            color: #1a1a1a;
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        .button:hover { 
+            background: #f0f0f0;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+            transform: translateY(-2px);
+        }
+        .flash { 
+            color: #4caf50; 
+            text-align: center; 
+            margin-bottom: 1em; 
+            padding: 0.5em;
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid #4caf50;
+            border-radius: 8px;
+        }
+        a { text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>FlipDisk Control</h1>
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <div class="flash">{{ messages[0] }}</div>
+          {% endif %}
+        {% endwith %}
+        <form action="/standby" method="post">
+            <button class="button" type="submit">Standby</button>
+        </form>
+        <form action="/weather" method="post">
+            <button class="button" type="submit">Weather</button>
+        </form>
+        <form action="/cycle" method="post">
+            <button class="button" type="submit">Cycle</button>
+        </form>
+        <a href="/upload"><button class="button" type="button">Upload</button></a>
+        <a href="/settings"><button class="button" type="button">Settings</button></a>
+    </div>
+</body>
+</html>

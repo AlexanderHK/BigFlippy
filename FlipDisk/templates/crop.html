@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Crop Image</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: #1a1a1a; 
+            color: #e0e0e0; 
+            margin: 0; 
+        }
+        .container { 
+            max-width: 400px; 
+            margin: 0 auto; 
+            padding: 2em 1em; 
+        }
+        h2 { 
+            color: #ffffff; 
+            text-align: center; 
+            margin-bottom: 1.5em; 
+        }
+        .button {
+            display: block;
+            width: 100%;
+            padding: 1em;
+            margin: 1em 0;
+            font-size: 1.2em;
+            background: #ffffff;
+            color: #1a1a1a;
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        .button:hover { 
+            background: #f0f0f0;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+            transform: translateY(-2px);
+        }
+        .preview-img { 
+            max-width: 100%; 
+            display: block; 
+            margin: 1em auto; 
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        .input-group { margin: 1em 0; }
+        label { 
+            display: block; 
+            margin-bottom: 0.5em; 
+            color: #e0e0e0;
+        }
+        input[type=radio] {
+            margin-right: 0.5em;
+            accent-color: #4a90e2;
+        }
+        input[type=number] { 
+            width: 80px; 
+            background: #2d2d2d;
+            border: 1px solid #444;
+            color: #e0e0e0;
+            padding: 0.3em;
+            border-radius: 4px;
+        }
+        a { 
+            color: #ff4444; 
+            text-decoration: none; 
+            display: block;
+            text-align: center;
+            margin-top: 1em;
+        }
+        a:hover { color: #ff6666; }
+        #cropBox {
+            border: 2px solid #4a90e2 !important;
+            background: rgba(74, 144, 226, 0.2) !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Crop Image</h2>
+        <div style="position:relative;width:100%;max-width:250px;margin:0 auto;">
+            <img id="img" src="{{ url_for('uploaded_file', filename=filename) }}" class="preview-img" alt="Preview" style="display:block;max-width:100%;">
+            <div id="cropBox" style="position:absolute;border:2px solid #007bff;box-sizing:border-box;background:rgba(0,123,255,0.1);cursor:move;"></div>
+        </div>
+        <div style="display:flex;gap:1em;justify-content:center;">
+            <form id="cropForm" method="post" style="flex:1;">
+                <input type="hidden" name="x" id="x">
+                <input type="hidden" name="y" id="y">
+                <input type="hidden" name="size" id="size">
+                <input type="hidden" name="img_display_w" id="img_display_w">
+                <input type="hidden" name="img_display_h" id="img_display_h">
+                <input type="hidden" name="rotation" id="rotation" value="0">
+                <input type="hidden" name="filename" value="{{ filename }}">
+                <button class="button" type="submit" style="margin:0;">Crop</button>
+            </form>
+            <form id="rotateForm" method="post" action="{{ url_for('rotate') }}" style="flex:1;">
+                <input type="hidden" name="filename" value="{{ filename }}">
+                <button class="button" type="submit" style="margin:0;">Rotate 90°</button>
+            </form>
+        </div>
+        <div style="margin:1em 0;text-align:left;">
+            <label style="display:block;"><input type="radio" name="target_folder" value="SimpleBW" form="cropForm" checked> SimpleBW</label>
+            <label style="display:block;"><input type="radio" name="target_folder" value="EdgeDetection" form="cropForm"> Edge Detection</label>
+        </div>
+        <a href="/upload">Back to Upload</a>
+    </div>
+    <script>
+    const img = document.getElementById('img');
+    const cropBox = document.getElementById('cropBox');
+    let imgW, imgH, boxSize, boxX, boxY, dragging = false, offsetX, offsetY;
+
+    img.onload = function() {
+        resetCropBox();
+    };
+
+    function resetCropBox() {
+        imgW = img.width;
+        imgH = img.height;
+        document.getElementById('img_display_w').value = imgW;
+        document.getElementById('img_display_h').value = imgH;
+        boxSize = Math.min(imgW, imgH); // maximized to min dimension
+        boxX = (imgW - boxSize) / 2;
+        boxY = (imgH - boxSize) / 2;
+        updateCropBox();
+    }
+
+    function updateCropBox() {
+        cropBox.style.width = boxSize + 'px';
+        cropBox.style.height = boxSize + 'px';
+        cropBox.style.left = boxX + 'px';
+        cropBox.style.top = boxY + 'px';
+        document.getElementById('x').value = Math.round(boxX);
+        document.getElementById('y').value = Math.round(boxY);
+        document.getElementById('size').value = Math.round(boxSize);
+    }
+
+    // Mouse events
+    cropBox.onmousedown = function(e) {
+        dragging = true;
+        offsetX = e.clientX - cropBox.getBoundingClientRect().left;
+        offsetY = e.clientY - cropBox.getBoundingClientRect().top;
+        document.body.style.userSelect = 'none';
+    };
+    document.onmouseup = function() { dragging = false; document.body.style.userSelect = ''; };
+    document.onmousemove = function(e) {
+        if (!dragging) return;
+        let parentRect = img.getBoundingClientRect();
+        let newX = e.clientX - parentRect.left - offsetX;
+        let newY = e.clientY - parentRect.top - offsetY;
+        newX = Math.max(0, Math.min(imgW - boxSize, newX));
+        newY = Math.max(0, Math.min(imgH - boxSize, newY));
+        boxX = newX;
+        boxY = newY;
+        updateCropBox();
+    };
+
+    // Touch events
+    cropBox.ontouchstart = function(e) {
+        if (e.touches.length === 1) {
+            dragging = true;
+            const touch = e.touches[0];
+            offsetX = touch.clientX - cropBox.getBoundingClientRect().left;
+            offsetY = touch.clientY - cropBox.getBoundingClientRect().top;
+            e.preventDefault();
+        }
+    };
+    document.ontouchend = function() { dragging = false; };
+    document.ontouchmove = function(e) {
+        if (!dragging || e.touches.length !== 1) return;
+        const touch = e.touches[0];
+        let parentRect = img.getBoundingClientRect();
+        let newX = touch.clientX - parentRect.left - offsetX;
+        let newY = touch.clientY - parentRect.top - offsetY;
+        newX = Math.max(0, Math.min(imgW - boxSize, newX));
+        newY = Math.max(0, Math.min(imgH - boxSize, newY));
+        boxX = newX;
+        boxY = newY;
+        updateCropBox();
+        e.preventDefault();
+    };
+
+    // Handle rotate button to refresh image and reset crop box
+    document.getElementById('rotateForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        fetch('/rotate', {
+            method: 'POST',
+            body: formData
+        }).then(() => {
+            // Force image reload by adding timestamp
+            const timestamp = new Date().getTime();
+            img.src = img.src.split('?')[0] + '?t=' + timestamp;
+        });
+    });
+    </script>
+</body>
+</html>
