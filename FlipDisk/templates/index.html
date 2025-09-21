@@ -102,11 +102,8 @@
         </form>
         <a href="/upload"><button class="button" type="button">Upload</button></a>
         <a href="/settings"><button class="button" type="button">Settings</button></a>
-        <form action="/release" method="post">
+        <form action="/release" method="post" style="display: none;">
             <button class="button" type="submit" style="background: #ffa500; margin-top: 1.5em;">Release Mode (Auto)</button>
-        </form>
-        <form action="/exit" method="post">
-            <button class="button" type="submit" style="background: #ff4444;">Exit FlipDisk</button>
         </form>
     </div>
     
@@ -123,6 +120,54 @@
     <script>
         let lastStatus = null;
         
+        function updateModeButtonStates(data) {
+            const currentMode = data.current_mode;
+            const isForced = data.is_forced;
+            const forcedMode = data.forced_mode;
+            
+            // Get all mode buttons
+            const standbyBtn = document.querySelector('form[action="/standby"] button');
+            const weatherBtn = document.querySelector('form[action="/weather"] button');
+            const cycleBtn = document.querySelector('form[action="/cycle"] button');
+            
+            // Reset all buttons to default state
+            [standbyBtn, weatherBtn, cycleBtn].forEach(btn => {
+                btn.style.opacity = '1';
+                btn.style.cursor = 'pointer';
+                btn.disabled = false;
+            });
+            
+            // If a mode is forced, disable buttons for other modes and highlight current
+            if (isForced) {
+                [standbyBtn, weatherBtn, cycleBtn].forEach(btn => {
+                    btn.style.opacity = '0.5';
+                    btn.style.cursor = 'not-allowed';
+                });
+                
+                // Highlight the currently forced mode button
+                if (forcedMode === 'StandbyMode') {
+                    standbyBtn.style.opacity = '1';
+                    standbyBtn.style.background = '#90EE90'; // Light green
+                } else if (forcedMode === 'WeatherMode') {
+                    weatherBtn.style.opacity = '1';
+                    weatherBtn.style.background = '#90EE90'; // Light green
+                } else if (forcedMode === 'CycleMode') {
+                    cycleBtn.style.opacity = '1';
+                    cycleBtn.style.background = '#90EE90'; // Light green
+                }
+            }
+            // If already in a mode naturally, show different styling
+            else {
+                if (currentMode === 'StandbyMode') {
+                    standbyBtn.style.background = '#ADD8E6'; // Light blue
+                } else if (currentMode === 'WeatherMode') {
+                    weatherBtn.style.background = '#ADD8E6'; // Light blue
+                } else if (currentMode === 'CycleMode') {
+                    cycleBtn.style.background = '#ADD8E6'; // Light blue
+                }
+            }
+        }
+        
         function updateStatus() {
             fetch('/status')
                 .then(response => response.json())
@@ -133,15 +178,21 @@
                     // Handle forced mode styling
                     const body = document.body;
                     const forcedIndicator = document.getElementById('forced-indicator');
+                    const releaseButton = document.querySelector('form[action="/release"]');
                     
                     if (data.is_forced) {
                         body.classList.add('forced-mode');
                         forcedIndicator.style.display = 'block';
                         forcedIndicator.innerHTML = '🔒 FORCED MODE: ' + (data.forced_mode || data.current_mode);
+                        releaseButton.style.display = 'block';
                     } else {
                         body.classList.remove('forced-mode');
                         forcedIndicator.style.display = 'none';
+                        releaseButton.style.display = 'none';
                     }
+                    
+                    // Update mode button states
+                    updateModeButtonStates(data);
                     
                     lastStatus = data;
                 })

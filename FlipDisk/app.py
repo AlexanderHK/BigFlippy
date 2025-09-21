@@ -77,6 +77,32 @@ def send_command(command, **kwargs):
     socket.send_string(json.dumps(message))
     print(f"Sent ZMQ message: {message}", flush=True)
 
+def can_force_mode(target_mode_name):
+    """
+    Check if we can force a mode based on current system state
+    Returns (allowed: bool, reason: str)
+    """
+    if latest_status is None:
+        return False, "System status not available"
+    
+    current_mode = latest_status.get('current_mode', 'Unknown')
+    is_forced = latest_status.get('is_forced', False)
+    forced_mode = latest_status.get('forced_mode', None)
+    
+    # Check if already in the target mode and it's forced
+    if is_forced and forced_mode == target_mode_name:
+        return False, f"Already in forced {target_mode_name} mode"
+    
+    # Check if already in the target mode naturally (not forced)
+    if current_mode == target_mode_name and not is_forced:
+        return False, f"Already in {target_mode_name} mode"
+    
+    # Check if another mode is currently forced
+    if is_forced and forced_mode != target_mode_name:
+        return False, f"Another mode ({forced_mode}) is currently forced. Release it first."
+    
+    return True, "OK"
+
 
 def process_image_for_board(image_path, processing_type='SimpleBW', size=None):
     """Process image for board display using FDProcessing functions"""
@@ -129,22 +155,52 @@ def index():
 
 @app.route('/standby', methods=['POST'])
 def standby():
+    allowed, reason = can_force_mode('StandbyMode')
+    if not allowed:
+        flash(f'Cannot force Standby mode: {reason}')
+        return redirect(url_for('index'))
+    
     send_command('standby', force=True)
     flash('Standby mode forced!')
     return redirect(url_for('index'))
 
 @app.route('/weather', methods=['POST'])
 def weather():
+    allowed, reason = can_force_mode('WeatherMode')
+    if not allowed:
+        flash(f'Cannot force Weather mode: {reason}')
+        return redirect(url_for('index'))
+    
     send_command('weather', force=True)
     flash('Weather mode forced!')
     return redirect(url_for('index'))
 
 @app.route('/cycle', methods=['POST'])
 def cycle():
+    allowed, reason = can_force_mode('CycleMode')
+    if not allowed:
+        flash(f'Cannot force Cycle mode: {reason}')
+        return redirect(url_for('index'))
+    
     # Clean up temporary images when starting cycle mode
     cleanup_temp_images()
     send_command('cycle', force=True)
     flash('Cycle mode forced! Temporary images cleared.')
+    return redirect(url_for('index'))
+
+@app.route('/release', methods=['POST'])
+def release():
+    if latest_status is None:
+        flash('System status not available')
+        return redirect(url_for('index'))
+    
+    is_forced = latest_status.get('is_forced', False)
+    if not is_forced:
+        flash('No mode is currently forced')
+        return redirect(url_for('index'))
+    
+    send_command('release')
+    flash('Released forced mode. Returning to automatic mode switching.')
     return redirect(url_for('index'))
 
 @app.route('/upload', methods=['GET', 'POST'])
