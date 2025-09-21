@@ -101,8 +101,8 @@ def crop():
         save_path = os.path.join(save_folder, filename)
         cropped.save(save_path)
         
-        # Send image to FlipDisk backend for processing in CycleMode
-        send_command('image', image_path=os.path.abspath(save_path))
+        # Send image to FlipDisk backend
+        send_command('image', image_path=os.path.abspath(save_path), folder=target_folder)
         
         # Remove the temporary file from uploads folder
         try:
@@ -139,4 +139,4 @@ def settings():
     return render_template('settings.html')
 
 if __name__ == '__main__':
-    app.run(host='10.0.0.143', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)

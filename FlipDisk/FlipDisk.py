@@ -50,7 +50,7 @@ def IsTimeBetween(start_time_str, end_time_str):
         # Interval crosses midnight
         return now >= start_time or now < end_time
     
-def zmq_subscriber_thread(q):
+def zmq_subscriber_thread(q, is_running_func):
     """ZMQ subscriber thread to receive messages from Flask app"""
     context = zmq.Context()
     socket = context.socket(zmq.SUB)
@@ -68,24 +68,31 @@ def zmq_subscriber_thread(q):
             print(f"Failed to connect to Flask: {e2}")
             return
     
-    while True:
-        try:
-            message = socket.recv_string(zmq.NOBLOCK)
-            data = json.loads(message)
-            print(f"Received ZMQ message: {data}")
-            
-            # Put the command into the queue for processing
-            if 'command' in data:
-                q.put(f"force {data['command']}")
-            elif 'image_path' in data:
-                q.put(f"image {data['image_path']}")
+    try:
+        while is_running_func():
+            try:
+                message = socket.recv_string(zmq.NOBLOCK)
+                data = json.loads(message)
+                print(f"Received ZMQ message: {data}")
                 
-        except zmq.Again:
-            # No message available
-            time.sleep(0.1)
-        except Exception as e:
-            print(f"ZMQ error: {e}")
-            time.sleep(1)
+                # Put the command into the queue for processing
+                if 'command' in data:
+                    q.put(f"force {data['command']}")
+                elif 'image_path' in data:
+                    q.put(f"image {data['image_path']}")
+                    
+            except zmq.Again:
+                # No message available
+                time.sleep(0.1)
+            except Exception as e:
+                print(f"ZMQ error: {e}")
+                time.sleep(1)
+                
+    finally:
+        # Clean up ZMQ resources
+        socket.close()
+        context.term()
+        print("ZMQ subscriber thread terminated")
     
 def get_current_mode():
     now = datetime.now().time()
@@ -106,16 +113,21 @@ def Run(run_in_plot=False):
     command_queue = queue.Queue()
     force_mode = None
     mode_thread = None
+    mode_lock = threading.Lock()  # Thread safety for mode operations
+    
+    def is_running():
+        return running
     
     # Start ZMQ subscriber thread as primary control method
-    zmq_thread = threading.Thread(target=zmq_subscriber_thread, args=(command_queue,), daemon=True)
+    zmq_thread = threading.Thread(target=zmq_subscriber_thread, args=(command_queue, is_running), daemon=True)
     zmq_thread.start()
     print("FlipDisk started - Browser control active on tcp://localhost:5555")
     print("Waiting for commands from web interface...")
 
-    mode = get_current_mode()
-    mode_thread = threading.Thread(target=mode.run, kwargs={'run_in_plot': run_in_plot}, daemon=True)
-    mode_thread.start()
+    with mode_lock:
+        mode = get_current_mode()
+        mode_thread = threading.Thread(target=mode.run, kwargs={'run_in_plot': run_in_plot}, daemon=True)
+        mode_thread.start()
 
     while running:
         # Check for commands from ZMQ (web interface)
@@ -125,7 +137,9 @@ def Run(run_in_plot=False):
 
             if command_lower == 'exit':
                 running = False
-                mode.shutdown()
+                with mode_lock:
+                    if mode:
+                        mode.shutdown()
 
             elif command_lower.startswith('force '):
                 arg = command_lower.split(' ', 1)[1]
@@ -142,44 +156,42 @@ def Run(run_in_plot=False):
                     print(f"Unknown mode: {arg}")
                     continue
 
-                force_mode = type(new_mode)
-                mode.shutdown()
+                with mode_lock:
+                    force_mode = type(new_mode)
+                    if mode:
+                        mode.shutdown()
 
-                if mode_thread and mode_thread.is_alive():
-                    mode_thread.join(timeout=1)
+                    if mode_thread and mode_thread.is_alive():
+                        mode_thread.join(timeout=1)
 
-                mode = new_mode
-                mode_thread = threading.Thread(target=mode.run, kwargs={'run_in_plot': run_in_plot}, daemon=True)
-                mode_thread.start()
-                print(f"Forced mode: {type(mode).__name__}")
+                    mode = new_mode
+                    mode_thread = threading.Thread(target=mode.run, kwargs={'run_in_plot': run_in_plot}, daemon=True)
+                    mode_thread.start()
+                    print(f"Forced mode: {type(mode).__name__}")
+
+            elif command_lower.startswith('image '):
+                # Handle image processing from web interface
+                image_path = command_lower.split(' ', 1)[1]
+                print(f"Processing image: {image_path}")
+                # Send image to current mode for processing
+                with mode_lock:
+                    if mode:
+                        try:
+                            mode.receive_data(f"image {image_path}")
+                        except Exception as e:
+                            print(f"Error processing image command: {e}")
 
             elif command_lower == 'release':
                 force_mode = None
                 print("Released forced mode. Returning to automatic mode switching.")
             
-            elif command_lower.startswith('image '):
-                # Route image commands to CycleMode
-                if isinstance(mode, CycleMode):
-                    mode.receive_data(command)
-                else:
-                    # Switch to CycleMode first, then process image
-                    new_mode = CycleMode()
-                    force_mode = type(new_mode)
-                    mode.shutdown()
-                    
-                    if mode_thread and mode_thread.is_alive():
-                        mode_thread.join(timeout=1)
-                    
-                    mode = new_mode
-                    mode_thread = threading.Thread(target=mode.run, kwargs={'run_in_plot': run_in_plot}, daemon=True)
-                    mode_thread.start()
-                    print("Switched to CycleMode for image processing")
-                    
-                    # Now send the image command to the new CycleMode
-                    mode.receive_data(command)
-            
             else:
-                mode.receive_data(command)
+                with mode_lock:
+                    if mode:
+                        try:
+                            mode.receive_data(command)
+                        except Exception as e:
+                            print(f"Error processing command '{command}': {e}")
                 
         except queue.Empty:
             pass
@@ -187,19 +199,28 @@ def Run(run_in_plot=False):
         # Check for mode change only if not forced
         if force_mode is None:
             new_mode = get_current_mode()
-            if type(new_mode) != type(mode):
-                if mode is not None:
-                    mode.shutdown()
-                    if mode_thread and mode_thread.is_alive():
-                        mode_thread.join(timeout=1)
-                mode = new_mode
-                mode_thread = threading.Thread(target=mode.run, kwargs={'run_in_plot': run_in_plot}, daemon=True)
-                mode_thread.start()
-                print("Current mode:", type(mode).__name__)
+            with mode_lock:
+                if type(new_mode) != type(mode):
+                    if mode is not None:
+                        mode.shutdown()
+                        if mode_thread and mode_thread.is_alive():
+                            mode_thread.join(timeout=1)
+                    mode = new_mode
+                    mode_thread = threading.Thread(target=mode.run, kwargs={'run_in_plot': run_in_plot}, daemon=True)
+                    mode_thread.start()
+                    print("Current mode:", type(mode).__name__)
 
-    if mode_thread and mode_thread.is_alive():
-        mode_thread.join(timeout=1)
-    mode.shutdown()
+    # Clean shutdown
+    with mode_lock:
+        if mode_thread and mode_thread.is_alive():
+            mode_thread.join(timeout=1)
+        if mode:
+            mode.shutdown()
+    
+    # Wait for ZMQ thread to finish
+    if zmq_thread.is_alive():
+        zmq_thread.join(timeout=2)
+    
     board.Shutdown()
 
 Run(run_in_plot)
