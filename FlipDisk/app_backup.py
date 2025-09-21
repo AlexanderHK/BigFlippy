@@ -1,5 +1,20 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory
-from PIL import Image
+from flask import Flask, render_template, request, redirect, url_for, flash, send_fro        cropped = img.crop((x_scaled, y_scaled, x_scaled + size_scaled, y_scaled + size_scaled))
+        # Save to selected folder
+        save_folder = os.path.join(UPLOAD_FOLDER, target_folder)
+        os.makedirs(save_folder, exist_ok=True)
+        save_path = os.path.join(save_folder, filename)
+        cropped.save(save_path)
+        
+        # Send image to FlipDisk backend
+        send_command('image', image_path=os.path.abspath(save_path), folder=target_folder)
+        
+        # Remove the temporary file from uploads folder
+        try:
+            os.remove(img_path)
+        except:
+            pass
+        flash(f'Image cropped and sent to FlipDisk!')
+        return redirect(url_for('upload'))from PIL import Image
 import io
 import os
 import zmq
@@ -13,18 +28,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # ZMQ Publisher setup
 context = zmq.Context()
 socket = context.socket(zmq.PUB)
-
-try:
-    socket.bind("tcp://*:5555")
-    print("Flask ZMQ Publisher bound to tcp://*:5555")
-except zmq.ZMQError as e:
-    print(f"Port 5555 in use, trying 5556...")
-    try:
-        socket.bind("tcp://*:5556")
-        print("Flask ZMQ Publisher bound to tcp://*:5556")
-    except zmq.ZMQError as e2:
-        print(f"ZMQ bind error: {e2}")
-        print("Please check if another FlipDisk instance is running")
+socket.bind("tcp://*:5555")
 
 def send_command(command, **kwargs):
     """Send command to FlipDisk backend via ZMQ"""
@@ -100,16 +104,12 @@ def crop():
         os.makedirs(save_folder, exist_ok=True)
         save_path = os.path.join(save_folder, filename)
         cropped.save(save_path)
-        
-        # Send image to FlipDisk backend for processing in CycleMode
-        send_command('image', image_path=os.path.abspath(save_path))
-        
         # Remove the temporary file from uploads folder
         try:
             os.remove(img_path)
         except:
             pass
-        flash(f'Image cropped and sent to FlipDisk!')
+        flash(f'Image cropped and will be processed using {target_folder}!')
         return redirect(url_for('upload'))
     return render_template('crop.html', filename=filename)
 
@@ -121,18 +121,6 @@ def rotate():
     rotated = img.rotate(-90, expand=True)  # -90 for clockwise rotation
     rotated.save(img_path)
     return redirect(url_for('crop', filename=filename))
-
-@app.route('/release', methods=['POST'])
-def release_mode():
-    send_command('release')
-    flash('Released forced mode - automatic switching resumed!')
-    return redirect(url_for('index'))
-
-@app.route('/exit', methods=['POST'])
-def exit_flipdisk():
-    send_command('exit')
-    flash('FlipDisk shutdown initiated!')
-    return redirect(url_for('index'))
 
 @app.route('/settings')
 def settings():

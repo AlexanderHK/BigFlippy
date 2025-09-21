@@ -179,7 +179,7 @@ def parse_gif(filepath):
 #=================================================================
 #                   Main function
 #=================================================================
-def cycle(current_time, run_in_plot=False):
+def cycle(current_time, run_in_plot=False, force_cycle=False, image_name=None):
     """Cycles through images in a specified directory and displays them on the board.
     :param board: The PixelBoard object to display images on.   
     """
@@ -189,10 +189,21 @@ def cycle(current_time, run_in_plot=False):
     #have to do some error checking here for some reason
     if len(LOADED_FILES)==0:
         return
-    current_image_obj = random.choice(LOADED_FILES)
-    current_image = current_image_obj.name
+    
+    #if no image name is provided, choose a random one
+    if image_name is None:
+        current_image_obj = random.choice(LOADED_FILES)
+        current_image = current_image_obj.name
+    else:
+        matching_files = [obj for obj in LOADED_FILES if obj.name == image_name]
+        if matching_files:
+            current_image_obj = matching_files[0]
+            current_image = current_image_obj.name
+        else:
+            print(f"No image found with name: {image_name}")
+            return
 
-    if current_time - last_time >= IMAGE_CYCLE_TIME and current_image != last_cycle_name:
+    if current_time - last_time >= IMAGE_CYCLE_TIME and current_image != last_cycle_name or force_cycle:
         print(f"Loading image: {current_image}")
 
         # Check the type of the content object and process accordingly
@@ -230,14 +241,34 @@ class CycleMode(ModeBase):
         while self.state == "RUNNING":
             current_time = time.time()
             
-            # If input_event is set and input_data is 'next', cycle immediately
+            # Check for input commands
             if self.input_event.is_set():
                 with self.lock:
-                    if self.input_data and self.input_data.lower() == 'next':
-                        cycle(current_time, run_in_plot)
-                        self.input_event.clear()
-                        self.input_data = None
-                        continue
+                    if self.input_data:
+                        data_lower = self.input_data.lower()
+                        
+                        # Handle "next" command - cycle immediately
+                        if data_lower == 'next':
+                            cycle(current_time, run_in_plot, True)
+                            self.input_event.clear()
+                            self.input_data = None
+                            continue
+                        
+                        # Handle "next <filename>" command
+                        elif data_lower.startswith('next '):
+                            image_name = self.input_data.split(' ', 1)[1]
+                            cycle(current_time, run_in_plot, True, image_name)
+                            self.input_event.clear()
+                            self.input_data = None
+                            continue
+                        
+                        # Handle "image <filepath>" command from web interface
+                        elif data_lower.startswith('image '):
+                            image_path = self.input_data.split(' ', 1)[1]
+                            self.process_uploaded_image(image_path, run_in_plot)
+                            self.input_event.clear()
+                            self.input_data = None
+                            continue
                         
             # Otherwise, cycle normally
             cycle(current_time, run_in_plot)
@@ -253,3 +284,40 @@ class CycleMode(ModeBase):
         with self.lock:
             self.input_data = data
             self.input_event.set()
+    
+    def process_uploaded_image(self, image_path, run_in_plot=False):
+        """Process an uploaded image from the web interface"""
+        import os
+        from PIL import Image
+        from FDProcessing import FD_ProcessImage, FD_SetPixelMatrix_FromImage, FD_DrawDisplayFromMatrix
+        
+        global pixelMatrix, darkMode, board
+        
+        try:
+            print(f"Processing uploaded image: {image_path}")
+            
+            # Check if file exists
+            if not os.path.exists(image_path):
+                print(f"Error: Image file not found: {image_path}")
+                return
+            
+            # Load and process the image
+            image = Image.open(image_path)
+            processed_image = FD_ProcessImage(image)
+            
+            # Convert to pixel matrix
+            FD_SetPixelMatrix_FromImage(processed_image, darkMode)
+            
+            # Display on the board
+            if not run_in_plot:
+                FD_DrawDisplayFromMatrix()
+                board.refreshDisplay()
+                print("Uploaded image displayed on FlipDisk")
+            else:
+                board.PlotLocal()
+                print("Uploaded image displayed locally")
+                
+        except Exception as e:
+            print(f"Error processing uploaded image: {e}")
+            import traceback
+            traceback.print_exc()

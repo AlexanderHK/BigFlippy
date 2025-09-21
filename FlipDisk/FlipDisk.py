@@ -16,6 +16,8 @@ import time
 import queue
 import threading
 import queue
+import zmq
+import json
 from global_state import boardSize, board
 from Modes.WeatherMode import WEATHER_START_TIME, WEATHER_END_TIME
 from Modes.CycleMode import SLEEP_START
@@ -27,7 +29,7 @@ class Mode(Enum):
     STANDBY = 3
 
 #run plotted version
-run_in_plot = False
+run_in_plot = True
 
 
 
@@ -48,10 +50,42 @@ def IsTimeBetween(start_time_str, end_time_str):
         # Interval crosses midnight
         return now >= start_time or now < end_time
     
-def input_thread(q):
+def zmq_subscriber_thread(q):
+    """ZMQ subscriber thread to receive messages from Flask app"""
+    context = zmq.Context()
+    socket = context.socket(zmq.SUB)
+    socket.setsockopt(zmq.SUBSCRIBE, b"")  # Subscribe to all messages
+    
+    # Connect to Flask publisher (Flask binds, we connect)
+    try:
+        socket.connect("tcp://localhost:5555")
+        print("ZMQ Subscriber connected to Flask on port 5555")
+    except zmq.ZMQError as e:
+        try:
+            socket.connect("tcp://localhost:5556")
+            print("ZMQ Subscriber connected to Flask on port 5556")
+        except zmq.ZMQError as e2:
+            print(f"Failed to connect to Flask: {e2}")
+            return
+    
     while True:
-        user_input = input("Enter 'next' to change mode, 'exit' to quit: ")
-        q.put(user_input)
+        try:
+            message = socket.recv_string(zmq.NOBLOCK)
+            data = json.loads(message)
+            print(f"Received ZMQ message: {data}")
+            
+            # Put the command into the queue for processing
+            if 'command' in data:
+                q.put(f"force {data['command']}")
+            elif 'image_path' in data:
+                q.put(f"image {data['image_path']}")
+                
+        except zmq.Again:
+            # No message available
+            time.sleep(0.1)
+        except Exception as e:
+            print(f"ZMQ error: {e}")
+            time.sleep(1)
     
 def get_current_mode():
     now = datetime.now().time()
@@ -69,34 +103,32 @@ def get_current_mode():
 
 def Run(run_in_plot=False):
     running = True
-    input_queue = queue.Queue()
+    command_queue = queue.Queue()
     force_mode = None
     mode_thread = None
-
-    def input_thread(q):
-        while True:
-            user_input = input("Enter 'force <mode>' to change mode, 'exit' to quit: ")
-            q.put(user_input)
-
-    thread = threading.Thread(target=input_thread, args=(input_queue,), daemon=True)
-    thread.start()
+    
+    # Start ZMQ subscriber thread as primary control method
+    zmq_thread = threading.Thread(target=zmq_subscriber_thread, args=(command_queue,), daemon=True)
+    zmq_thread.start()
+    print("FlipDisk started - Browser control active on tcp://localhost:5555")
+    print("Waiting for commands from web interface...")
 
     mode = get_current_mode()
     mode_thread = threading.Thread(target=mode.run, kwargs={'run_in_plot': run_in_plot}, daemon=True)
     mode_thread.start()
 
     while running:
-        # Check for user input asynchronously
+        # Check for commands from ZMQ (web interface)
         try:
-            user_input = input_queue.get(timeout=0.1)
-            user_input_lower = user_input.lower()
+            command = command_queue.get(timeout=0.1)
+            command_lower = command.lower()
 
-            if user_input_lower == 'exit':
+            if command_lower == 'exit':
                 running = False
                 mode.shutdown()
 
-            elif user_input_lower.startswith('force '):
-                arg = user_input_lower.split(' ', 1)[1]
+            elif command_lower.startswith('force '):
+                arg = command_lower.split(' ', 1)[1]
                 #======================================
                 #             Define Modes
                 #======================================
@@ -121,12 +153,33 @@ def Run(run_in_plot=False):
                 mode_thread.start()
                 print(f"Forced mode: {type(mode).__name__}")
 
-            elif user_input_lower == 'release':
+            elif command_lower == 'release':
                 force_mode = None
                 print("Released forced mode. Returning to automatic mode switching.")
             
+            elif command_lower.startswith('image '):
+                # Route image commands to CycleMode
+                if isinstance(mode, CycleMode):
+                    mode.receive_data(command)
+                else:
+                    # Switch to CycleMode first, then process image
+                    new_mode = CycleMode()
+                    force_mode = type(new_mode)
+                    mode.shutdown()
+                    
+                    if mode_thread and mode_thread.is_alive():
+                        mode_thread.join(timeout=1)
+                    
+                    mode = new_mode
+                    mode_thread = threading.Thread(target=mode.run, kwargs={'run_in_plot': run_in_plot}, daemon=True)
+                    mode_thread.start()
+                    print("Switched to CycleMode for image processing")
+                    
+                    # Now send the image command to the new CycleMode
+                    mode.receive_data(command)
+            
             else:
-                mode.receive_data(user_input)
+                mode.receive_data(command)
                 
         except queue.Empty:
             pass
