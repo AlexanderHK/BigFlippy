@@ -59,13 +59,13 @@ def zmq_subscriber_thread(q, is_running_func):
     # Connect to Flask publisher (Flask binds, we connect)
     try:
         socket.connect("tcp://localhost:5555")
-        print("ZMQ Subscriber connected to Flask on port 5555")
+        print("ZMQ Subscriber connected to Flask on port 5555", flush=True)
     except zmq.ZMQError as e:
         try:
             socket.connect("tcp://localhost:5556")
-            print("ZMQ Subscriber connected to Flask on port 5556")
+            print("ZMQ Subscriber connected to Flask on port 5556", flush=True)
         except zmq.ZMQError as e2:
-            print(f"Failed to connect to Flask: {e2}")
+            print(f"Failed to connect to Flask: {e2}", flush=True)
             return
     
     try:
@@ -73,7 +73,7 @@ def zmq_subscriber_thread(q, is_running_func):
             try:
                 message = socket.recv_string(zmq.NOBLOCK)
                 data = json.loads(message)
-                print(f"Received ZMQ message: {data}")
+                print(f"Received ZMQ message: {data}", flush=True)
                 
                 # Put the command into the queue for processing
                 if 'command' in data:
@@ -85,14 +85,14 @@ def zmq_subscriber_thread(q, is_running_func):
                 # No message available
                 time.sleep(0.1)
             except Exception as e:
-                print(f"ZMQ error: {e}")
+                print(f"ZMQ error: {e}", flush=True)
                 time.sleep(1)
                 
     finally:
         # Clean up ZMQ resources
         socket.close()
         context.term()
-        print("ZMQ subscriber thread terminated")
+        print("ZMQ subscriber thread terminated", flush=True)
     
 def get_current_mode():
     now = datetime.now().time()
@@ -121,8 +121,8 @@ def Run(run_in_plot=False):
     # Start ZMQ subscriber thread as primary control method
     zmq_thread = threading.Thread(target=zmq_subscriber_thread, args=(command_queue, is_running), daemon=True)
     zmq_thread.start()
-    print("FlipDisk started - Browser control active on tcp://localhost:5555")
-    print("Waiting for commands from web interface...")
+    print("FlipDisk started - Browser control active on tcp://localhost:5555", flush=True)
+    print("Waiting for commands from web interface...", flush=True)
 
     with mode_lock:
         mode = get_current_mode()
@@ -134,7 +134,7 @@ def Run(run_in_plot=False):
         try:
             command = command_queue.get(timeout=0.1)
             command_lower = command.lower()
-            print(f"Received command: {command_lower}")
+            print(f"Received command: {command_lower}", flush=True)
 
 
             if command_lower == 'exit':
@@ -155,7 +155,7 @@ def Run(run_in_plot=False):
                 elif arg == 'standby':
                     new_mode = StandbyMode()
                 else:
-                    print(f"Unknown mode: {arg}")
+                    print(f"Unknown mode: {arg}", flush=True)
                     continue
 
                 with mode_lock:
@@ -169,23 +169,23 @@ def Run(run_in_plot=False):
                     mode = new_mode
                     mode_thread = threading.Thread(target=mode.run, kwargs={'run_in_plot': run_in_plot}, daemon=True)
                     mode_thread.start()
-                    print(f"Forced mode: {type(mode).__name__}")
+                    print(f"Forced mode: {type(mode).__name__}", flush=True)
 
             elif command_lower.startswith('image '):
                 # Handle image processing from web interface
                 image_path = command_lower.split(' ', 1)[1]
-                print(f"Processing image: {image_path}")
+                print(f"Processing image: {image_path}", flush=True)
                 # Send image to current mode for processing
                 with mode_lock:
                     if mode:
                         try:
                             mode.receive_data(f"image {image_path}")
                         except Exception as e:
-                            print(f"Error processing image command: {e}")
+                            print(f"Error processing image command: {e}", flush=True)
 
             elif command_lower == 'release':
                 force_mode = None
-                print("Released forced mode. Returning to automatic mode switching.")
+                print("Released forced mode. Returning to automatic mode switching.", flush=True)
             
             else:
                 with mode_lock:
@@ -193,7 +193,7 @@ def Run(run_in_plot=False):
                         try:
                             mode.receive_data(command)
                         except Exception as e:
-                            print(f"Error processing command '{command}': {e}")
+                            print(f"Error processing command '{command}': {e}", flush=True)
                 
         except queue.Empty:
             pass
@@ -210,7 +210,7 @@ def Run(run_in_plot=False):
                     mode = new_mode
                     mode_thread = threading.Thread(target=mode.run, kwargs={'run_in_plot': run_in_plot}, daemon=True)
                     mode_thread.start()
-                    print("Current mode:", type(mode).__name__)
+                    print("Current mode:", type(mode).__name__, flush=True)
 
     # Clean shutdown
     with mode_lock:

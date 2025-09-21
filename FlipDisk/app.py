@@ -16,21 +16,21 @@ socket = context.socket(zmq.PUB)
 
 try:
     socket.bind("tcp://*:5555")
-    print("Flask ZMQ Publisher bound to tcp://*:5555")
+    print("Flask ZMQ Publisher bound to tcp://*:5555", flush=True)
 except zmq.ZMQError as e:
-    print(f"Port 5555 in use, trying 5556...")
+    print(f"Port 5555 in use, trying 5556...", flush=True)
     try:
         socket.bind("tcp://*:5556")
-        print("Flask ZMQ Publisher bound to tcp://*:5556")
+        print("Flask ZMQ Publisher bound to tcp://*:5556", flush=True)
     except zmq.ZMQError as e2:
-        print(f"ZMQ bind error: {e2}")
-        print("Please check if another FlipDisk instance is running")
+        print(f"ZMQ bind error: {e2}", flush=True)
+        print("Please check if another FlipDisk instance is running", flush=True)
 
 def send_command(command, **kwargs):
     """Send command to FlipDisk backend via ZMQ"""
     message = {'command': command, **kwargs}
     socket.send_string(json.dumps(message))
-    print(f"Sent ZMQ message: {message}")
+    print(f"Sent ZMQ message: {message}", flush=True)
 
 @app.route('/')
 def index():
