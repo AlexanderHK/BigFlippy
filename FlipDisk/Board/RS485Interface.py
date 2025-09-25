@@ -8,7 +8,10 @@ import numpy as np
 import serial
 import gpiod
 from gpiod.line import Direction, Value
-import PixelBoard as PB
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from Board import PixelBoard as PB
 
 
 

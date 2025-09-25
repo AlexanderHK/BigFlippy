@@ -2,9 +2,13 @@ from PIL import Image
 import python_weather
 from enum import Enum
 import asyncio
-from BoardFont import BoardFont
-from FDProcessing import SimpleBW
-from global_state import boardSize, board
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from Board.BoardFont import BoardFont
+from Board.FDProcessing import SimpleBW
+from constants import boardSize
+from Board.PixelBoard import board
 from .ModeBase import ModeBase
 #==================================================================
 #                   Weather mode Variables

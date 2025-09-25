@@ -2,14 +2,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 from PIL import Image, ImageEnhance
-import FDProcessing
-import PixelBoard
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from Board import FDProcessing
+from Board import PixelBoard
 from Modes.CycleMode import CycleMode
 from Modes.WeatherMode import WeatherMode
 from Modes.StandbyMode import StandbyMode
-import sys
 from enum import Enum
-import os 
 import random
 from datetime import datetime
 import time
@@ -18,9 +19,10 @@ import threading
 import queue
 import zmq
 import json
-from global_state import boardSize, board
+from constants import boardSize
 from Modes.WeatherMode import WEATHER_START_TIME, WEATHER_END_TIME
 from Modes.CycleMode import SLEEP_START
+from Board.PixelBoard import board
 
 class Mode(Enum):
     IMAGE_CYCLE = 0

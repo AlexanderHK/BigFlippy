@@ -21,7 +21,7 @@ class FlipDiskLauncher:
         try:
             print("🔄 Starting FlipDisk backend...")
             self.backend_process = subprocess.Popen(
-                [sys.executable, "FlipDisk.py"],
+                [sys.executable, "Board/FlipDisk.py"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 universal_newlines=True,
@@ -52,7 +52,7 @@ class FlipDiskLauncher:
             time.sleep(2)
             
             self.frontend_process = subprocess.Popen(
-                [sys.executable, "app.py"],
+                [sys.executable, "FlaskApp/app.py"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 universal_newlines=True,
@@ -164,7 +164,7 @@ class FlipDiskLauncher:
 def main():
     """Entry point"""
     # Check if required files exist
-    required_files = ["FlipDisk.py", "app.py"]
+    required_files = ["Board/FlipDisk.py", "FlaskApp/app.py"]
     missing_files = [f for f in required_files if not os.path.exists(f)]
     
     if missing_files:

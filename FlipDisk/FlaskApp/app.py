@@ -2,16 +2,19 @@ from flask import Flask, render_template, request, redirect, url_for, flash, sen
 from PIL import Image
 import io
 import os
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import zmq
 import json
-import FDProcessing
-from global_state import boardSize
+from Board import FDProcessing
+from constants import boardSize
 import cv2
 import numpy as np
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'  # Needed for flash messages
-UPLOAD_FOLDER = 'uploads'
+UPLOAD_FOLDER = '../uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # ZMQ Publisher setup (for sending commands to backend)

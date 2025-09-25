@@ -2,8 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 from PIL import Image, ImageEnhance
-import FDProcessing
-import PixelBoard
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from Board import FDProcessing
+from Board import PixelBoard
 
 
 
@@ -57,7 +60,7 @@ def StartRealtimePixelFlip(pixelboard):
     
 
 # Create a pixel board
-boardSize = (28, 28)
+from constants import boardSize
 board = PixelBoard.PixelBoard(boardSize[0],boardSize[1])
 
 StartRealtimePixelFlip(board)

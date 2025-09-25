@@ -8,9 +8,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 from PIL import Image, ImageEnhance
-from BoardFont import BoardFont  # Assuming BoardFont.py is in the same directory
-from FDProcessing import SimpleBW, EdgeDetection
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from Board.BoardFont import BoardFont
+from Board.FDProcessing import SimpleBW, EdgeDetection
+from constants import boardSize
 #import RS485Interface as ser
+
 
 #virtual pixelboard
 class PixelBoard:
@@ -105,7 +110,7 @@ class PixelBoard:
                     if y + y_offset < self.height and x_start + x < self.width:
                         self.set_pixel(x_start + x, y + y_offset, char_matrix[y][x])
 
-
+board = PixelBoard(boardSize[0],boardSize[1])
                 
             
         

@@ -3,9 +3,12 @@ import os
 import random
 from datetime import datetime
 import time
-import FDProcessing
-import PixelBoard
-from global_state import boardSize, board
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from Board import FDProcessing
+from Board.PixelBoard import PixelBoard, board
+from constants import boardSize
 from .ModeBase import ModeBase
 
 #global variables

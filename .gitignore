@@ -169,3 +169,11 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# FlipDisk specific files
+# Ignore uploaded files but keep the directory structure
+FlipDisk/uploads/*
+!FlipDisk/uploads/.gitkeep
+!FlipDisk/uploads/EdgeDetection/
+!FlipDisk/uploads/SimpleBW/
+!FlipDisk/uploads/preview/
