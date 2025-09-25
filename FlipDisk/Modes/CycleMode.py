@@ -19,7 +19,8 @@ ACCEPTABLE_EXTENSIONS = ['jpg', 'jpeg', 'png']
 ACCEPTABLE_PROCESSING_MODES = ['EdgeDetection', 'SimpleBW', 'Yolo']
 IMAGE_CYCLE_TIME = 5  # Time in seconds for image cycle mode
 ANIMATION_FRAME_RATE = 0.1  # Time in seconds for each frame in animation
-CYCLE_IMAGE_DIRECTORY = "uploads"  # Directory where images are stored
+# Use absolute path for uploads directory
+CYCLE_IMAGE_DIRECTORY = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads")  # Directory where images are stored
 SLEEP_START = "23:00"
 GIF_LOOPS = 3
 

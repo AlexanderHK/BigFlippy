@@ -14,7 +14,9 @@ import numpy as np
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'  # Needed for flash messages
-UPLOAD_FOLDER = '../uploads'
+
+# Use absolute path for uploads folder relative to the project root
+UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # ZMQ Publisher setup (for sending commands to backend)

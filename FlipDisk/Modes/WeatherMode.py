@@ -15,7 +15,8 @@ from .ModeBase import ModeBase
 #==================================================================
 WEATHER_START_TIME = "06:30"  # Start time for weather mode
 WEATHER_END_TIME = "9:30"  # End time for weather mode
-WEATHER_IMAGE_DIRECTORY = "WeatherImages/"  # Directory where images are stored
+# Use absolute path for WeatherImages directory
+WEATHER_IMAGE_DIRECTORY = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "WeatherImages")  # Directory where images are stored
 
 #==================================================================
 #                   Weather Class
@@ -87,7 +88,8 @@ class WeatherMode(ModeBase):
         :param weather: Weather object containing high, low, and status attributes.
         """
         board.clear()
-        img = Image.open(f"WeatherImages/{weather.status}.png")  # Load the weather image
+        weather_image_path = os.path.join(WEATHER_IMAGE_DIRECTORY, f"{weather.status}.png")
+        img = Image.open(weather_image_path)  # Load the weather image
         img = SimpleBW(img, board.getSize(), invert=True)  # Convert to black and white
         board.loadImage(img)
         board.WriteOnTop(f"LO   HI", y_offset=0,font=BoardFont(), x_offset=0, spacing=1)
