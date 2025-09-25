@@ -251,7 +251,7 @@ class CycleMode(ModeBase):
                     if self.input_data:                        
                         # Handle "next" command - cycle immediately
                         if self.input_data == 'next':
-                            cycle(current_time, run_in_plot, True)
+                            self.cycle_next(current_time, run_in_plot)
                             self.input_event.clear()
                             self.input_data = None
                             continue
@@ -259,18 +259,100 @@ class CycleMode(ModeBase):
                         # Handle "next <filename>" command
                         elif self.input_data.startswith('next '):
                             image_name = self.input_data.split(' ', 1)[1]
-                            cycle(current_time, run_in_plot, True, image_name)
+                            # Force cycle to the specific image and update our instance variables
+                            self.cycle_to_image(image_name, current_time, run_in_plot)
                             self.input_event.clear()
                             self.input_data = None
                             continue
                        
                         
             # Otherwise, cycle normally
-            cycle(current_time, run_in_plot)
+            self.cycle_normal(current_time, run_in_plot)
             if not run_in_plot:
                 board.refreshDisplay()
             else:
                 board.PlotLocal()
+
+    def cycle_to_image(self, image_name, current_time, run_in_plot=False):
+        """Cycle to a specific image and update instance state"""
+        global LOADED_FILES
+        
+        # Reload content objects to pick up any new images
+        loadContentObjects()
+        
+        # Find the specific image
+        matching_files = [obj for obj in LOADED_FILES if obj.name == image_name]
+        if matching_files:
+            current_image_obj = matching_files[0]
+            current_image = current_image_obj.name
+            print(f"Loading requested image: {current_image}")
+            
+            # Display the image based on its type
+            if current_image_obj.content_type == "GIF":
+                publish_gif(current_image_obj, run_in_plot)
+            elif current_image_obj.content_type == "Animation":
+                publish_animation(current_image_obj, run_in_plot)
+            elif current_image_obj.content_type == "Photo":
+                publish_photo(current_image_obj, run_in_plot)
+            
+            # Update instance variables so normal cycling continues from here
+            self.last_time = current_time
+            self.last_cycle_name = current_image
+        else:
+            print(f"No image found with name: {image_name}")
+
+    def cycle_next(self, current_time, run_in_plot=False):
+        """Force cycle to next random image"""
+        global LOADED_FILES
+        
+        if len(LOADED_FILES) == 0:
+            return
+            
+        # Choose a random image
+        current_image_obj = random.choice(LOADED_FILES)
+        current_image = current_image_obj.name
+        print(f"Force cycling to: {current_image}")
+        
+        # Display the image based on its type
+        if current_image_obj.content_type == "GIF":
+            publish_gif(current_image_obj, run_in_plot)
+        elif current_image_obj.content_type == "Animation":
+            publish_animation(current_image_obj, run_in_plot)
+        elif current_image_obj.content_type == "Photo":
+            publish_photo(current_image_obj, run_in_plot)
+        
+        # Update instance variables
+        self.last_time = current_time
+        self.last_cycle_name = current_image
+
+    def cycle_normal(self, current_time, run_in_plot=False):
+        """Normal cycling behavior using instance variables"""
+        global LOADED_FILES
+        
+        if len(LOADED_FILES) == 0:
+            return
+            
+        # Check if it's time to cycle (using instance variables)
+        if current_time - self.last_time >= IMAGE_CYCLE_TIME:
+            # Choose a random image
+            current_image_obj = random.choice(LOADED_FILES)
+            current_image = current_image_obj.name
+            
+            # Only cycle if it's a different image
+            if current_image != self.last_cycle_name:
+                print(f"Normal cycling to: {current_image}")
+                
+                # Display the image based on its type
+                if current_image_obj.content_type == "GIF":
+                    publish_gif(current_image_obj, run_in_plot)
+                elif current_image_obj.content_type == "Animation":
+                    publish_animation(current_image_obj, run_in_plot)
+                elif current_image_obj.content_type == "Photo":
+                    publish_photo(current_image_obj, run_in_plot)
+                
+                # Update instance variables
+                self.last_time = current_time
+                self.last_cycle_name = current_image
 
     def shutdown(self):
         self.state = "STOPPED"
