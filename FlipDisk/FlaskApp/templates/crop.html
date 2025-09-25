@@ -95,7 +95,7 @@
                 <input type="hidden" name="img_display_h" id="img_display_h">
                 <input type="hidden" name="rotation" id="rotation" value="0">
                 <input type="hidden" name="filename" value="{{ filename }}">
-                <button class="button" type="submit" style="margin:0;">Crop</button>
+                <button class="button" type="submit" style="margin:0;" id="cropOrAcceptBtn">Crop</button>
             </form>
             <form id="rotateForm" method="post" action="{{ url_for('rotate') }}" style="flex:1;">
                 <input type="hidden" name="filename" value="{{ filename }}">
@@ -196,6 +196,15 @@
             img.src = img.src.split('?')[0] + '?t=' + timestamp;
         });
     });
+
+    // GIF detection and button change
+    const cropOrAcceptBtn = document.getElementById('cropOrAcceptBtn');
+    const filename = '{{ filename }}';
+    if (filename.toLowerCase().endsWith('.gif')) {
+        cropOrAcceptBtn.textContent = 'Accept';
+        // Hide the crop box for GIFs since we won't be cropping
+        cropBox.style.display = 'none';
+    }
     </script>
 </body>
 </html>

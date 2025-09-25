@@ -137,7 +137,6 @@ def status_broadcast_thread(status_socket, is_running_func, mode_lock, get_mode_
             }
             
             status_socket.send_string(json.dumps(status_data))
-            print(f"Status broadcast: {status_data['current_mode']}, forced: {status_data['is_forced']}", flush=True)
             
         except Exception as e:
             print(f"Status broadcast error: {e}", flush=True)

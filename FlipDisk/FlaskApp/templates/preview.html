@@ -73,9 +73,11 @@
             image-rendering: pixelated;
             image-rendering: -moz-crisp-edges;
             image-rendering: crisp-edges;
-            width: 400px;
-            height: 400px;
+            width: 336px;  /* 28 * 12 = exact scaled representation */
+            height: 336px; /* 28 * 12 = exact scaled representation */
             display: block;
+            border: 2px solid #666;
+            background: #000;
         }
         .preview-label {
             color: #ffffff;
@@ -107,8 +109,8 @@
                 padding: 15px;
             }
             .board-preview {
-                width: 300px;
-                height: 300px;
+                width: 280px;  /* Smaller for mobile but maintaining aspect ratio */
+                height: 280px;
             }
         }
         @media (max-width: 400px) {
@@ -116,8 +118,8 @@
                 padding: 10px;
             }
             .board-preview {
-                width: 250px;
-                height: 250px;
+                width: 224px;  /* Smallest mobile size but still clear */
+                height: 224px;
             }
         }
     </style>
@@ -145,8 +147,8 @@
                          class="board-preview" alt="Board preview">
                 </div>
                 <div style="margin-top: 1em; font-size: 1em; color: #ccc;">
-                    This is how it will appear on the {{ board_size[0] }}×{{ board_size[1] }} flip-dot display<br>
-                    <small style="color: #999;">(Upsampled for visibility - actual size is {{ board_size[0] }}×{{ board_size[1] }} pixels)</small>
+                    Exact preview of how it will appear on the {{ board_size[0] }}×{{ board_size[1] }} flip-dot display<br>
+                    <small style="color: #999;">(Processed to {{ board_size[0] }}×{{ board_size[1] }} pixels, then scaled up for visibility)</small>
                 </div>
             </div>
         </div>

@@ -60,7 +60,6 @@ def status_listener():
                 message = status_socket.recv_string(zmq.NOBLOCK)
                 data = json.loads(message)
                 latest_status = data
-                print(f"Received status update: {data['current_mode']}, forced: {data['is_forced']}", flush=True)
             except zmq.Again:
                 # No message available
                 pass
@@ -219,10 +218,19 @@ def upload():
             flash('No selected file')
             return redirect(request.url)
         if file:
-            img = Image.open(file.stream)
             filename = file.filename
-            # Save to temporary uploads folder for cropping
-            img.save(os.path.join(UPLOAD_FOLDER, filename))
+            file_path = os.path.join(UPLOAD_FOLDER, filename)
+            
+            # For GIFs, save as binary to preserve animation
+            if filename.lower().endswith('.gif'):
+                file.save(file_path)
+                print(f"Saved GIF as binary: {file_path}", flush=True)
+            else:
+                # For other images, use PIL processing as before
+                img = Image.open(file.stream)
+                img.save(file_path)
+                print(f"Saved image via PIL: {file_path}", flush=True)
+            
             return redirect(url_for('crop', filename=filename))
     return render_template('upload.html')
 
@@ -237,7 +245,14 @@ def uploaded_file(filename):
 @app.route('/crop', methods=['GET', 'POST'])
 def crop():
     filename = request.args.get('filename') if request.method == 'GET' else request.form.get('filename')
+    
     if request.method == 'POST':
+        # If GIF, skip cropping and go directly to preview with selected processing type
+        if filename and filename.lower().endswith('.gif'):
+            target_folder = request.form.get('target_folder', 'SimpleBW')
+            return redirect(url_for('preview', filename=filename, target_folder=target_folder))
+        
+        # Regular image cropping logic
         x = int(request.form['x'])
         y = int(request.form['y'])
         size = int(request.form['size'])
@@ -279,27 +294,58 @@ def preview():
         flash('No image to preview')
         return redirect(url_for('upload'))
     
-    # Get the cropped image path
-    preview_path = os.path.join(UPLOAD_FOLDER, 'preview', filename)
-    print(f"Preview path: {preview_path}", flush=True)
-    print(f"Preview path exists: {os.path.exists(preview_path)}", flush=True)
+    # Check if this is a GIF that needs frame extraction
+    if filename.lower().endswith('.gif'):
+        # For GIFs, use the original file from uploads folder
+        original_path = os.path.join(UPLOAD_FOLDER, filename)
+        if not os.path.exists(original_path):
+            flash(f'Original GIF not found at {original_path}')
+            return redirect(url_for('upload'))
+        
+        # Extract first frame from GIF
+        try:
+            gif_img = Image.open(original_path)
+            gif_img.seek(0)  # Go to first frame
+            first_frame = gif_img.convert('RGB')  # Convert to RGB for processing
+            
+            # Save the first frame to preview folder for processing
+            preview_folder = os.path.join(UPLOAD_FOLDER, 'preview')
+            os.makedirs(preview_folder, exist_ok=True)
+            frame_filename = f"frame_{filename.replace('.gif', '.png')}"
+            preview_path = os.path.join(preview_folder, frame_filename)
+            first_frame.save(preview_path)
+            print(f"Extracted first frame from GIF to: {preview_path}", flush=True)
+        except Exception as e:
+            flash(f'Error extracting frame from GIF: {e}')
+            return redirect(url_for('upload'))
+    else:
+        # Get the cropped image path for regular images
+        preview_path = os.path.join(UPLOAD_FOLDER, 'preview', filename)
+        print(f"Preview path: {preview_path}", flush=True)
+        print(f"Preview path exists: {os.path.exists(preview_path)}", flush=True)
+        
+        if not os.path.exists(preview_path):
+            flash(f'Preview image not found at {preview_path}')
+            return redirect(url_for('upload'))
     
-    if not os.path.exists(preview_path):
-        flash(f'Preview image not found at {preview_path}')
-        return redirect(url_for('upload'))
+    # Process the image at actual board size to see how it will really look
+    board_processed_img = process_image_for_board(preview_path, target_folder, size=boardSize)
     
-    # Process the image for board preview (use larger size for better preview)
-    processed_img = process_image_for_board(preview_path, target_folder, size=(400, 400))
-    
-    if processed_img is None:
+    if board_processed_img is None:
         flash('Error processing image for preview')
         return redirect(url_for('upload'))
     
-    # Save the processed preview
+    # Scale up the board-size image for display while maintaining pixelated look
+    # Use nearest neighbor to keep sharp pixels
+    scale_factor = 12  # Scale 28x28 to 336x336 for good visibility
+    display_size = (boardSize[0] * scale_factor, boardSize[1] * scale_factor)
+    display_img = board_processed_img.resize(display_size, Image.NEAREST)
+    
+    # Save the scaled preview
     processed_filename = f"processed_{filename}"
     processed_path = os.path.join(UPLOAD_FOLDER, 'preview', processed_filename)
-    processed_img.save(processed_path)
-    print(f"Processed image saved to: {processed_path}", flush=True)
+    display_img.save(processed_path)
+    print(f"Board preview saved to: {processed_path} (scaled from {boardSize} to {display_size})", flush=True)
     
     return render_template('preview.html', 
                          filename=filename, 
@@ -316,28 +362,57 @@ def confirm_image():
         flash('No image to confirm')
         return redirect(url_for('upload'))
     
-    # Move the cropped image from preview to final folder
-    preview_path = os.path.join(UPLOAD_FOLDER, 'preview', filename)
     save_folder = os.path.join(UPLOAD_FOLDER, target_folder)
     os.makedirs(save_folder, exist_ok=True)
     save_path = os.path.join(save_folder, filename)
     
     try:
-        # Copy the file to the final location
         import shutil
-        shutil.copy2(preview_path, save_path)
+        
+        # Handle GIFs differently - use original file
+        if filename.lower().endswith('.gif'):
+            # For GIFs, copy the original unmodified file using binary copy
+            original_path = os.path.join(UPLOAD_FOLDER, filename)
+            if os.path.exists(original_path):
+                # Use binary copy to preserve the GIF exactly as is
+                with open(original_path, 'rb') as src, open(save_path, 'wb') as dst:
+                    dst.write(src.read())
+                print(f"Binary copied original GIF from {original_path} to {save_path}", flush=True)
+            else:
+                flash('Original GIF file not found')
+                return redirect(url_for('upload'))
+        else:
+            # For regular images, use the cropped version from preview
+            preview_path = os.path.join(UPLOAD_FOLDER, 'preview', filename)
+            shutil.copy2(preview_path, save_path)
         
         # Send image to FlipDisk backend
         send_command('image', image_path=filename, folder=target_folder)
         
         # Clean up preview files
         try:
-            os.remove(preview_path)
+            if filename.lower().endswith('.gif'):
+                # For GIFs, remove the original uploaded file and extracted frame
+                original_path = os.path.join(UPLOAD_FOLDER, filename)
+                if os.path.exists(original_path):
+                    os.remove(original_path)
+                # Remove extracted frame if it exists
+                frame_filename = f"frame_{filename.replace('.gif', '.png')}"
+                frame_path = os.path.join(UPLOAD_FOLDER, 'preview', frame_filename)
+                if os.path.exists(frame_path):
+                    os.remove(frame_path)
+            else:
+                # For regular images, remove the cropped preview
+                preview_path = os.path.join(UPLOAD_FOLDER, 'preview', filename)
+                if os.path.exists(preview_path):
+                    os.remove(preview_path)
+            
+            # Always clean up the processed preview
             processed_preview_path = os.path.join(UPLOAD_FOLDER, 'preview', f"processed_{filename}")
             if os.path.exists(processed_preview_path):
                 os.remove(processed_preview_path)
-        except:
-            pass
+        except Exception as cleanup_error:
+            print(f"Cleanup error: {cleanup_error}", flush=True)
         
         flash(f'Image confirmed and sent to FlipDisk!')
         return redirect(url_for('upload'))
