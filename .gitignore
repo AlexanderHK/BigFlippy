@@ -171,9 +171,7 @@ cython_debug/
 .pypirc
 
 # FlipDisk specific files
-# Ignore uploaded files but keep the directory structure
-FlipDisk/uploads/*
-!FlipDisk/uploads/.gitkeep
-!FlipDisk/uploads/EdgeDetection/
-!FlipDisk/uploads/SimpleBW/
-!FlipDisk/uploads/preview/
+# Ignore all files in uploads directories and subdirectories
+FlipDisk/uploads/**/*
+# But keep the directory structure with .gitkeep files
+!FlipDisk/uploads/**/.gitkeep
