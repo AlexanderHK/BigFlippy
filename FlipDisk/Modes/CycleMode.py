@@ -267,11 +267,14 @@ class CycleMode(ModeBase):
                        
                         
             # Otherwise, cycle normally
-            self.cycle_normal(current_time, run_in_plot)
-            if not run_in_plot:
-                board.refreshDisplay()
-            else:
-                board.PlotLocal()
+            display_updated = self.cycle_normal(current_time, run_in_plot)
+            
+            # Only refresh if no image was displayed in cycle_normal
+            if not display_updated:
+                if not run_in_plot:
+                    board.refreshDisplay()
+                else:
+                    board.PlotLocal()
 
     def cycle_to_image(self, image_name, current_time, run_in_plot=False):
         """Cycle to a specific image and update instance state"""
@@ -294,6 +297,10 @@ class CycleMode(ModeBase):
                 publish_animation(current_image_obj, run_in_plot)
             elif current_image_obj.content_type == "Photo":
                 publish_photo(current_image_obj, run_in_plot)
+            
+            # Give hardware time to process if not running in simulation
+            if not run_in_plot:
+                time.sleep(0.1)
             
             # Update instance variables so normal cycling continues from here
             self.last_time = current_time
@@ -321,6 +328,10 @@ class CycleMode(ModeBase):
         elif current_image_obj.content_type == "Photo":
             publish_photo(current_image_obj, run_in_plot)
         
+        # Give hardware time to process if not running in simulation
+        if not run_in_plot:
+            time.sleep(0.1)
+            
         # Update instance variables
         self.last_time = current_time
         self.last_cycle_name = current_image
@@ -330,7 +341,7 @@ class CycleMode(ModeBase):
         global LOADED_FILES
         
         if len(LOADED_FILES) == 0:
-            return
+            return False
             
         # Check if it's time to cycle (using instance variables)
         if current_time - self.last_time >= IMAGE_CYCLE_TIME:
@@ -350,9 +361,16 @@ class CycleMode(ModeBase):
                 elif current_image_obj.content_type == "Photo":
                     publish_photo(current_image_obj, run_in_plot)
                 
+                # Give hardware time to process if not running in simulation
+                if not run_in_plot:
+                    time.sleep(0.1)
+                
                 # Update instance variables
                 self.last_time = current_time
                 self.last_cycle_name = current_image
+                return True  # Image was displayed
+        
+        return False  # No image was displayed
 
     def shutdown(self):
         self.state = "STOPPED"
