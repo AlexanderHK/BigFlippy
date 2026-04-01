@@ -3,7 +3,7 @@
 This is a creative tech/art project for controlling flip dot displays using Raspberry Pi 5 with CAN Hat and RS485 serial transmission. Mainly did this because I am a lowly chud with way too much free time. 
 ## Project Overview
 
-BigFlippy is the **open-source** project that brings flip dot displays to life through creative programming and hardware hacking. Hopefully this project provides the tools and framework for someone who wants to also have a flip dot display to get started with something pretty fun and functional.
+BigFlippy is an **open-source** project that brings flip dot displays to life through creative programming and hardware hacking. Hopefully this project provides the tools and framework for someone who wants to also have a flip dot display to get started with something pretty fun and functional.
 
 **I encourage you to try it out and create something amazing!**
 
